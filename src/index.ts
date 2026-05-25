@@ -51,7 +51,7 @@ function getState(userId: number): UserState {
 
 // ─── Message texts ─────────────────────────────────────────────────────────
 
-const HELP = `/start - ☑️ <b>Add Button Bot</b>
+const HELP = `☑️ <b>Add Button Bot</b>
 
 Добавляю кнопки к постам в твоём Telegram-канале — без рекламы и лишних пометок.
 
