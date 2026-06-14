@@ -45,9 +45,10 @@ export function parsePostLink(input: string): ParsedLink | null {
  *       Button1 | https://url1 | Button2 | https://url2
  *   - Empty lines are ignored.
  *
+ * maxButtons: 6 for free users, 20 for premium.
  * Returns null if the format is invalid.
  */
-export function parseButtons(text: string): InlineButton[][] | null {
+export function parseButtons(text: string, maxButtons = 20): InlineButton[][] | null {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   if (lines.length === 0) return null;
 
@@ -72,10 +73,10 @@ export function parseButtons(text: string): InlineButton[][] | null {
       row.push({ text: btnText, url: btnUrl });
       totalButtons++;
 
-      if (totalButtons > 20) return null;
+      if (totalButtons > maxButtons) return null;
     }
 
-    if (row.length > 8) return null; // Telegram max buttons per row
+    if (row.length > 8) return null;
 
     rows.push(row);
   }
