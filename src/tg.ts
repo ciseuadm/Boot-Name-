@@ -1,8 +1,18 @@
 import fetch from 'node-fetch';
 
 export const BOT_TOKEN = process.env.BOT_TOKEN ?? '';
-export const WEBHOOK_URL = process.env.WEBHOOK_URL ?? '';
-export const ADMIN_IDS = (process.env.ADMIN_IDS ?? '').split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
+
+// Railway provides RAILWAY_PUBLIC_DOMAIN automatically — no manual WEBHOOK_URL needed
+export const WEBHOOK_URL =
+  process.env.WEBHOOK_URL ??
+  (process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : '');
+
+export const ADMIN_IDS = (process.env.ADMIN_IDS ?? '')
+  .split(',')
+  .map(s => parseInt(s.trim(), 10))
+  .filter(Boolean);
 
 if (!BOT_TOKEN) throw new Error('BOT_TOKEN env var is required');
 

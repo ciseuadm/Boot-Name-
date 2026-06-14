@@ -15,8 +15,15 @@ exports.setWebhook = setWebhook;
 exports.setMyCommands = setMyCommands;
 const node_fetch_1 = __importDefault(require("node-fetch"));
 exports.BOT_TOKEN = process.env.BOT_TOKEN ?? '';
-exports.WEBHOOK_URL = process.env.WEBHOOK_URL ?? '';
-exports.ADMIN_IDS = (process.env.ADMIN_IDS ?? '').split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
+// Railway provides RAILWAY_PUBLIC_DOMAIN automatically — no manual WEBHOOK_URL needed
+exports.WEBHOOK_URL = process.env.WEBHOOK_URL ??
+    (process.env.RAILWAY_PUBLIC_DOMAIN
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : '');
+exports.ADMIN_IDS = (process.env.ADMIN_IDS ?? '')
+    .split(',')
+    .map(s => parseInt(s.trim(), 10))
+    .filter(Boolean);
 if (!exports.BOT_TOKEN)
     throw new Error('BOT_TOKEN env var is required');
 const API = `https://api.telegram.org/bot${exports.BOT_TOKEN}`;
