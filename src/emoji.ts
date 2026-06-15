@@ -10,47 +10,52 @@
 // `cp` is the alt emoji code point — using fromCodePoint guarantees the exact
 // base scalar (no variation selector), which must match the custom emoji's alt.
 
+// All icons below are from the TrendingRaidar premium set — a cohesive neon
+// "trending" pack that matches the bot's dark-neon avatar/banner. Each concept
+// maps to the closest-fitting glyph in that single set so the whole bot shares
+// one consistent visual language. `cp` / `alt` is the exact alt scalar of the
+// chosen sticker (must match, incl. any U+FE0F variation selector / keycaps).
 const E = {
-  check:     { id: '5379666011068835203', cp: 0x2705 },  // ✅ success / confirm
-  bolt:      { id: '5377834924776627189', cp: 0x26A1 },  // ⚡ speed
-  ninja:     { id: '5321362835047985289', cp: 0x1F977 }, // 🥷 stealth (no "edited")
-  noentry:   { id: '5343864838726634378', cp: 0x1F6AB }, // 🚫 no ads/watermark
-  chart:     { id: '5282734530547951466', cp: 0x1F4CA }, // 📊 analytics
-  chartup:   { id: '5316817673022101530', cp: 0x1F4C8 }, // 📈 stats growth
-  alarm:     { id: '4967525849902350972', cp: 0x23F0 },  // ⏰ scheduling
-  rocket:    { id: '5866355487255039002', cp: 0x1F680 }, // 🚀 call to action
-  plus:      { id: '5330462483473771381', cp: 0x2795 },  // ➕ add
-  trash:     { id: '5979070714890686650', cp: 0x1F5D1 }, // 🗑 remove/delete
-  dividers:  { id: '5818955300463447293', cp: 0x1F5C2 }, // 🗂 templates
-  gem:       { id: '5377460163110249077', cp: 0x1F48E }, // 💎 premium
-  star:      { id: '5377366996679670959', cp: 0x2B50 },  // ⭐ plan / highlight
-  crown:     { id: '5321120470043468200', cp: 0x1F451 }, // 👑 premium active
-  handshake: { id: '5978856151209480380', cp: 0x1F91D }, // 🤝 referral
-  gift:      { id: '5377549086113145493', cp: 0x1F381 }, // 🎁 bonus
-  people:    { id: '5203934795633020471', cp: 0x1F465 }, // 👥 referrals count
-  question:  { id: '5314335697321075587', cp: 0x2753 },  // ❓ help
-  book:      { id: '5318989650868576167', cp: 0x1F4D6 }, // 📖 reference
-  bulb:      { id: '5228740817337727023', cp: 0x1F4A1 }, // 💡 hint
-  link:      { id: '5377792383125561840', cp: 0x1F517 }, // 🔗 send link
-  fire:      { id: '5379824774534930587', cp: 0x1F525 }, // 🔥 hot deal
-  warning:   { id: '5348177037431414677', cp: 0x26A0 },  // ⚠ limit / caution
-  cross:     { id: '5377399483812290165', cp: 0x274C },  // ❌ error / cancel
-  radio:     { id: '5888489858913014264', cp: 0x1F518 }, // 🔘 button / post found
-  pushpin:   { id: '5379593761128979286', cp: 0x1F4CC }, // 📌 apply template
-  pencil:    { id: '5956143844457189176', cp: 0x270F },  // ✏ naming / input
-  puzzle:    { id: '5316896567276347777', cp: 0x1F9E9 }, // 🧩 assemble buttons
-  eye:       { id: '5886667040432853038', cp: 0x1F441 }, // 👁 tracking on
-  bell:      { id: '5348496376839805930', cp: 0x1F514 }, // 🔔 timer / notify
-  megaphone: { id: '5377855592159257618', cp: 0x1F4E2 }, // 📢 broadcast / share
-  money:     { id: '5454276769890715064', cp: 0x1F4B0 }, // 💰 payment
-  lock:      { id: '5454341361903880753', cp: 0x1F512 }, // 🔒 admin
-  key:       { id: '5978854270013804830', cp: 0x1F511 }, // 🔑 access / start
-  spark:     { id: '5380050088519278681', cp: 0x2728 },  // ✨ clean / shiny
-  target:    { id: '5274266216544871353', cp: 0x1F3AF }, // 🎯 goal / templates
-  // Keycap step numbers (neonbykaty) — multi-codepoint alts kept as literals
-  num1:      { id: '5314435971922534805', alt: '1\uFE0F\u20E3' }, // 1️⃣
-  num2:      { id: '5314266995024208393', alt: '2\uFE0F\u20E3' }, // 2️⃣
-  num3:      { id: '5314774088927946548', alt: '3\uFE0F\u20E3' }, // 3️⃣
+  check:     { id: '5778450623536043224', cp: 0x2705 },          // ✅ success / confirm
+  bolt:      { id: '5778322642100558247', alt: '\u26A1\uFE0F' }, // ⚡ speed
+  ninja:     { id: '5767392255274915656', cp: 0x1F6E1 },         // 🛡 no traces / unchanged
+  noentry:   { id: '5780515922984835359', cp: 0x274C },          // ❌ no ads / watermark
+  chart:     { id: '5778154657339676520', cp: 0x1F4CA },         // 📊 analytics
+  chartup:   { id: '5780814040959818245', cp: 0x1F4C8 },         // 📈 stats growth
+  alarm:     { id: '5778480967479990908', cp: 0x23F0 },          // ⏰ scheduling
+  rocket:    { id: '5778230072670427367', cp: 0x1F680 },         // 🚀 call to action
+  plus:      { id: '5800903050407188061', cp: 0x2795 },          // ➕ add
+  trash:     { id: '5789811164221282489', cp: 0x2796 },          // ➖ remove / delete
+  dividers:  { id: '5787492135284512666', cp: 0x1F4CB },         // 📋 templates list
+  gem:       { id: '5778484639677028654', cp: 0x1F3C6 },         // 🏆 premium
+  star:      { id: '5787295065005103877', alt: '\u2B50\uFE0F' }, // ⭐ plan / highlight
+  crown:     { id: '5780686892747986518', cp: 0x1F984 },         // 🦄 premium active (rare)
+  handshake: { id: '5780582791330667024', cp: 0x1F310 },         // 🌐 referral / network
+  gift:      { id: '5789830590358362852', cp: 0x1F381 },         // 🎁 bonus
+  people:    { id: '5778354210110183831', cp: 0x1F464 },         // 👤 referrals count
+  question:  { id: '5798550894387664277', cp: 0x2754 },          // ❓ help
+  book:      { id: '5778246582524713423', alt: '\u2139\uFE0F' }, // ℹ️ reference / info
+  bulb:      { id: '5778357804997810086', cp: 0x1F4AC },         // 💬 hint / tip
+  link:      { id: '5787306390833862600', cp: 0x1F517 },         // 🔗 send link
+  fire:      { id: '5776025298453666377', cp: 0x1F525 },         // 🔥 hot / hook
+  warning:   { id: '5778621271176648643', alt: '\u26A0\uFE0F' }, // ⚠️ limit / caution
+  cross:     { id: '5787240918352402233', alt: '\u2716\uFE0F' }, // ✖️ error / cancel
+  radio:     { id: '5823381685168773423', cp: 0x1F518 },         // 🔘 button / post found
+  pushpin:   { id: '5780717932476635115', cp: 0x1F516 },         // 🔖 apply template
+  pencil:    { id: '5778147033772726447', cp: 0x1F195 },         // 🆕 new / input
+  puzzle:    { id: '5778371432929041838', cp: 0x1F535 },         // 🔵 assemble buttons
+  eye:       { id: '5780472213102663642', cp: 0x1F441 },         // 👁 tracking on
+  bell:      { id: '5780772031884695993', cp: 0x23F3 },          // ⏳ timer / wait
+  megaphone: { id: '5787596309716277103', cp: 0x1F4E3 },         // 📣 broadcast / share
+  money:     { id: '5778660595897211318', cp: 0x1FA99 },         // 🪙 payment
+  lock:      { id: '5778670452847155016', cp: 0x1F510 },         // 🔐 admin
+  key:       { id: '5780674948443937507', cp: 0x1F513 },         // 🔓 access / start
+  spark:     { id: '5800759688693816045', cp: 0x1F389 },         // 🎉 clean / celebrate
+  target:    { id: '5784936865966594550', cp: 0x1F51D },         // 🔝 goal / top
+  // Keycap step numbers
+  num1:      { id: '5787546793038321619', alt: '1\uFE0F\u20E3' }, // 1️⃣
+  num2:      { id: '5785314148778777346', alt: '2\uFE0F\u20E3' }, // 2️⃣
+  num3:      { id: '5787253824729126735', alt: '3\uFE0F\u20E3' }, // 3️⃣
 } as const;
 
 export type EmojiName = keyof typeof E;
