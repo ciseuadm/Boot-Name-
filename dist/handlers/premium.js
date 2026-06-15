@@ -46,10 +46,13 @@ async function sendPlanInvoice(chatId, userId, planKey) {
 }
 // ── Pre-checkout handler ──────────────────────────────────────────────────────
 async function handlePreCheckout(query) {
-    const validPayloads = Object.values(exports.PLANS).map(p => `${p.key}_${query.from.id}`);
-    const isValid = validPayloads.some(p => query.invoice_payload.startsWith(p.replace(`_${query.from.id}`, '')));
     if (query.currency !== 'XTR') {
         await (0, tg_1.answerPreCheckout)(query.id, false, 'Неверная валюта');
+        return;
+    }
+    const knownPlan = Object.values(exports.PLANS).some(p => query.invoice_payload.startsWith(p.key));
+    if (!knownPlan) {
+        await (0, tg_1.answerPreCheckout)(query.id, false, 'Неизвестный тариф');
         return;
     }
     await (0, tg_1.answerPreCheckout)(query.id, true);

@@ -10,6 +10,7 @@ exports.getUser = getUser;
 exports.isPremium = isPremium;
 exports.grantPremium = grantPremium;
 exports.getUserByReferralCode = getUserByReferralCode;
+exports.grantPremiumDays = grantPremiumDays;
 exports.recordReferral = recordReferral;
 exports.setStatsEnabled = setStatsEnabled;
 exports.logUsage = logUsage;
@@ -153,12 +154,24 @@ async function getUserByReferralCode(code) {
     const { rows } = await exports.pool.query('SELECT * FROM users WHERE referral_code = $1', [code.toUpperCase()]);
     return rows[0] ?? null;
 }
+async function grantPremiumDays(userId, days) {
+    await exports.pool.query(`UPDATE users SET
+       plan = 'premium',
+       premium_until = GREATEST(COALESCE(premium_until, NOW()), NOW()) + ($2 * INTERVAL '1 day')
+     WHERE id = $1`, [userId, days]);
+}
 async function recordReferral(newUserId, referrerId) {
-    await exports.pool.query('UPDATE users SET referred_by = $1 WHERE id = $2 AND referred_by IS NULL', [referrerId, newUserId]);
+    const updated = await exports.pool.query('UPDATE users SET referred_by = $1 WHERE id = $2 AND referred_by IS NULL', [referrerId, newUserId]);
+    // Guard against double-counting if this referral was already recorded
+    if ((updated.rowCount ?? 0) === 0)
+        return;
     const { rows } = await exports.pool.query('UPDATE users SET referral_count = referral_count + 1 WHERE id = $1 RETURNING referral_count', [referrerId]);
     const count = rows[0]?.referral_count ?? 0;
+    // +1 day for every referral
+    await grantPremiumDays(referrerId, 1);
+    // Bonus: +5 days for every 3rd referral
     if (count % 3 === 0) {
-        await grantPremium(referrerId, 1);
+        await grantPremiumDays(referrerId, 5);
     }
 }
 async function setStatsEnabled(userId, enabled) {

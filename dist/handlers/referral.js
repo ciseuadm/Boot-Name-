@@ -47,15 +47,8 @@ async function processReferral(newUserId, code) {
     if (newUser?.referred_by)
         return; // already referred
     await (0, db_1.recordReferral)(newUserId, referrer.id);
-    // New user gets 3 days free trial
-    await grantPremiumDays(newUserId, 3);
-}
-async function grantPremiumDays(userId, days) {
-    const { pool } = await Promise.resolve().then(() => __importStar(require('../db')));
-    await pool.query(`UPDATE users SET
-       plan = 'premium',
-       premium_until = GREATEST(COALESCE(premium_until, NOW()), NOW()) + ($2 * INTERVAL '1 day')
-     WHERE id = $1`, [userId, days]);
+    // New user gets 1 day free trial
+    await (0, db_1.grantPremiumDays)(newUserId, 1);
 }
 // /ref command
 async function handleRefCommand(userId, chatId) {
@@ -69,12 +62,12 @@ async function handleRefCommand(userId, chatId) {
     await (0, tg_1.sendMessage)(chatId, `🤝 <b>Реферальная программа</b>\n\n` +
         `Твоя ссылка:\n<code>${link}</code>\n\n` +
         `Как работает:\n` +
-        `• Друг переходит по твоей ссылке и получает <b>3 дня Premium бесплатно</b>\n` +
-        `• Ты получаешь <b>+7 дней Premium</b> за каждого\n` +
-        `• Каждые 3 реферала = <b>+1 месяц Premium</b>\n\n` +
+        `• Друг переходит по твоей ссылке и получает <b>1 день Premium бесплатно</b>\n` +
+        `• Ты получаешь <b>+1 день Premium</b> за каждого\n` +
+        `• Каждые 3 реферала = <b>+5 дней Premium</b> бонусом\n\n` +
         `📊 Твоя статистика:\n` +
         `Рефералов: <b>${count}</b>\n` +
-        `До следующего бонусного месяца: <b>${nextBonus}</b> реферала\n` +
+        `До следующего бонуса (+5 дней): <b>${nextBonus}</b>\n` +
         (premium ? '' : '\n💡 Начни делиться ссылкой прямо сейчас!'));
 }
 // Called after successful referral — notify referrer
@@ -84,8 +77,8 @@ async function notifyReferrer(referrerId, newUserName) {
         return;
     const { sendMessage: send } = await Promise.resolve().then(() => __importStar(require('../tg')));
     const count = referrer.referral_count;
-    const bonusMsg = count % 3 === 0 ? '\n🎁 Бонус: <b>+1 месяц Premium</b> за 3 реферала!' : '';
+    const bonusMsg = count % 3 === 0 ? '\n🎁 Бонус: <b>+5 дней Premium</b> за 3 реферала!' : '';
     await send(referrerId, `🎉 По твоей реферальной ссылке зарегистрировался новый пользователь!\n` +
-        `Ты получил <b>+7 дней Premium</b>.${bonusMsg}\n\n` +
+        `Ты получил <b>+1 день Premium</b>.${bonusMsg}\n\n` +
         `Всего рефералов: ${count}`).catch(() => { });
 }

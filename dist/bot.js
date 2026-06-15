@@ -49,6 +49,22 @@ function getState(userId) {
     return states.get(userId) ?? { step: 'idle' };
 }
 // ─── Start message ──────────────────────────────────────────────────────────
+// Short, attractive caption shown with the avatar on /start
+const WELCOME = `☑️ <b>Add Button Bot</b>
+
+Добавляю кнопки к постам канала — <b>без пометки «изменено»</b>.
+
+✨ Любые эмодзи в кнопках
+📊 Аналитика кликов
+📋 Шаблоны и отложенный постинг
+
+<b>Старт за 3 шага:</b>
+1️⃣ Добавь меня в админы канала
+2️⃣ Включи право «Редактировать сообщения»
+3️⃣ Жми /add
+
+Все команды — /help`;
+// Full command reference shown on /help
 const HELP = `☑️  <b>Add Button Bot</b>
 
 Добавляю кнопки к постам в твоём Telegram-канале — без рекламы и лишних пометок.
@@ -68,6 +84,19 @@ const HELP = `☑️  <b>Add Button Bot</b>
 Добавь меня в администраторы своего канала
 Выдай право «Редактировать сообщения»
 Отправь /add и следуй инструкции`;
+const AVATAR_URL = tg_1.WEBHOOK_URL ? `${tg_1.WEBHOOK_URL}/avatar.png` : '';
+async function sendWelcome(chatId, caption) {
+    if (AVATAR_URL) {
+        try {
+            await (0, tg_1.sendPhoto)(chatId, AVATAR_URL, caption);
+            return;
+        }
+        catch {
+            // Fall back to plain text if photo delivery fails
+        }
+    }
+    await (0, tg_1.sendMessage)(chatId, caption);
+}
 // ─── Main update handler ─────────────────────────────────────────────────────
 async function handleUpdate(update) {
     // Pre-checkout
@@ -127,11 +156,10 @@ async function handleUpdate(update) {
                     await (0, referral_1.notifyReferrer)(referrer.id, msg.from.first_name);
             }
         }
-        const user = await Promise.resolve().then(() => __importStar(require('./db'))).then(m => m.getUser(userId));
         const premium = await (0, db_1.isPremium)(userId);
         const badge = premium ? ' ⭐' : '';
-        const trialNote = isNewRef ? '\n\n🎁 Тебе начислено 3 дня Premium в подарок!' : '';
-        await (0, tg_1.sendMessage)(chatId, HELP + badge + trialNote);
+        const trialNote = isNewRef ? '\n\n🎁 Тебе начислен 1 день Premium в подарок!' : '';
+        await sendWelcome(chatId, WELCOME + badge + trialNote);
         return;
     }
     // ── /help ──────────────────────────────────────────────────────────────────

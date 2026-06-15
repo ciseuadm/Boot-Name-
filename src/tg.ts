@@ -49,6 +49,21 @@ export async function sendMessage(
   });
 }
 
+export async function sendPhoto(
+  chatId: number,
+  photo: string,
+  caption: string,
+  extra: Record<string, unknown> = {},
+): Promise<void> {
+  await tg('sendPhoto', {
+    chat_id: chatId,
+    photo,
+    caption,
+    parse_mode: 'HTML',
+    ...extra,
+  });
+}
+
 export async function editMarkup(
   chatId: string | number,
   messageId: number,

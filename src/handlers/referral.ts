@@ -1,5 +1,5 @@
 import { sendMessage, BOT_USERNAME } from '../tg';
-import { getUser, getUserByReferralCode, recordReferral, grantPremium, isPremium } from '../db';
+import { getUser, getUserByReferralCode, recordReferral, grantPremiumDays, isPremium } from '../db';
 
 // Called on /start ref_CODE — register referral for new user
 export async function processReferral(newUserId: number, code: string): Promise<void> {
@@ -10,19 +10,8 @@ export async function processReferral(newUserId: number, code: string): Promise<
   if (newUser?.referred_by) return; // already referred
 
   await recordReferral(newUserId, referrer.id);
-  // New user gets 3 days free trial
-  await grantPremiumDays(newUserId, 3);
-}
-
-async function grantPremiumDays(userId: number, days: number): Promise<void> {
-  const { pool } = await import('../db');
-  await pool.query(
-    `UPDATE users SET
-       plan = 'premium',
-       premium_until = GREATEST(COALESCE(premium_until, NOW()), NOW()) + ($2 * INTERVAL '1 day')
-     WHERE id = $1`,
-    [userId, days],
-  );
+  // New user gets 1 day free trial
+  await grantPremiumDays(newUserId, 1);
 }
 
 // /ref command
@@ -40,12 +29,12 @@ export async function handleRefCommand(userId: number, chatId: number): Promise<
     `🤝 <b>Реферальная программа</b>\n\n` +
       `Твоя ссылка:\n<code>${link}</code>\n\n` +
       `Как работает:\n` +
-      `• Друг переходит по твоей ссылке и получает <b>3 дня Premium бесплатно</b>\n` +
-      `• Ты получаешь <b>+7 дней Premium</b> за каждого\n` +
-      `• Каждые 3 реферала = <b>+1 месяц Premium</b>\n\n` +
+      `• Друг переходит по твоей ссылке и получает <b>1 день Premium бесплатно</b>\n` +
+      `• Ты получаешь <b>+1 день Premium</b> за каждого\n` +
+      `• Каждые 3 реферала = <b>+5 дней Premium</b> бонусом\n\n` +
       `📊 Твоя статистика:\n` +
       `Рефералов: <b>${count}</b>\n` +
-      `До следующего бонусного месяца: <b>${nextBonus}</b> реферала\n` +
+      `До следующего бонуса (+5 дней): <b>${nextBonus}</b>\n` +
       (premium ? '' : '\n💡 Начни делиться ссылкой прямо сейчас!'),
   );
 }
@@ -57,12 +46,12 @@ export async function notifyReferrer(referrerId: number, newUserName: string): P
 
   const { sendMessage: send } = await import('../tg');
   const count = referrer.referral_count;
-  const bonusMsg = count % 3 === 0 ? '\n🎁 Бонус: <b>+1 месяц Premium</b> за 3 реферала!' : '';
+  const bonusMsg = count % 3 === 0 ? '\n🎁 Бонус: <b>+5 дней Premium</b> за 3 реферала!' : '';
 
   await send(
     referrerId,
     `🎉 По твоей реферальной ссылке зарегистрировался новый пользователь!\n` +
-      `Ты получил <b>+7 дней Premium</b>.${bonusMsg}\n\n` +
+      `Ты получил <b>+1 день Premium</b>.${bonusMsg}\n\n` +
       `Всего рефералов: ${count}`,
   ).catch(() => {});
 }

@@ -190,18 +190,36 @@ export async function getUserByReferralCode(code: string): Promise<User | null> 
   return rows[0] ?? null;
 }
 
-export async function recordReferral(newUserId: number, referrerId: number): Promise<void> {
+export async function grantPremiumDays(userId: number, days: number): Promise<void> {
   await pool.query(
+    `UPDATE users SET
+       plan = 'premium',
+       premium_until = GREATEST(COALESCE(premium_until, NOW()), NOW()) + ($2 * INTERVAL '1 day')
+     WHERE id = $1`,
+    [userId, days],
+  );
+}
+
+export async function recordReferral(newUserId: number, referrerId: number): Promise<void> {
+  const updated = await pool.query(
     'UPDATE users SET referred_by = $1 WHERE id = $2 AND referred_by IS NULL',
     [referrerId, newUserId],
   );
+  // Guard against double-counting if this referral was already recorded
+  if ((updated.rowCount ?? 0) === 0) return;
+
   const { rows } = await pool.query<{ referral_count: number }>(
     'UPDATE users SET referral_count = referral_count + 1 WHERE id = $1 RETURNING referral_count',
     [referrerId],
   );
   const count = rows[0]?.referral_count ?? 0;
+
+  // +1 day for every referral
+  await grantPremiumDays(referrerId, 1);
+
+  // Bonus: +5 days for every 3rd referral
   if (count % 3 === 0) {
-    await grantPremium(referrerId, 1);
+    await grantPremiumDays(referrerId, 5);
   }
 }
 

@@ -65,13 +65,17 @@ async function sendPlanInvoice(
 // ── Pre-checkout handler ──────────────────────────────────────────────────────
 
 export async function handlePreCheckout(query: TgPreCheckoutQuery): Promise<void> {
-  const validPayloads = Object.values(PLANS).map(p => `${p.key}_${query.from.id}`);
-  const isValid = validPayloads.some(p => query.invoice_payload.startsWith(p.replace(`_${query.from.id}`, '')));
-
   if (query.currency !== 'XTR') {
     await answerPreCheckout(query.id, false, 'Неверная валюта');
     return;
   }
+
+  const knownPlan = Object.values(PLANS).some(p => query.invoice_payload.startsWith(p.key));
+  if (!knownPlan) {
+    await answerPreCheckout(query.id, false, 'Неизвестный тариф');
+    return;
+  }
+
   await answerPreCheckout(query.id, true);
 }
 

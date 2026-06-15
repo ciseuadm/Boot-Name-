@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
+const path_1 = __importDefault(require("path"));
 const tg_1 = require("./tg");
 const db_1 = require("./db");
 const bot_1 = require("./bot");
@@ -11,6 +12,10 @@ const scheduler_1 = require("./scheduler");
 const PORT = parseInt(process.env.PORT ?? '3000', 10);
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
+// ── Bot avatar (used in /start welcome) ──────────────────────────────────────
+app.get('/avatar.png', (_req, res) => {
+    res.sendFile(path_1.default.join(process.cwd(), 'assets', 'avatars', 'avatar-2-dark-neon.png'));
+});
 // ── Telegram webhook ─────────────────────────────────────────────────────────
 app.post(`/webhook/${tg_1.BOT_TOKEN}`, (req, res) => {
     res.sendStatus(200);

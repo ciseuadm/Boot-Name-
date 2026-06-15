@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.BOT_USERNAME = exports.ADMIN_IDS = exports.WEBHOOK_URL = exports.BOT_TOKEN = void 0;
 exports.tg = tg;
 exports.sendMessage = sendMessage;
+exports.sendPhoto = sendPhoto;
 exports.editMarkup = editMarkup;
 exports.answerCallback = answerCallback;
 exports.answerPreCheckout = answerPreCheckout;
@@ -47,6 +48,15 @@ async function sendMessage(chatId, text, extra = {}) {
         text,
         parse_mode: 'HTML',
         disable_web_page_preview: true,
+        ...extra,
+    });
+}
+async function sendPhoto(chatId, photo, caption, extra = {}) {
+    await tg('sendPhoto', {
+        chat_id: chatId,
+        photo,
+        caption,
+        parse_mode: 'HTML',
         ...extra,
     });
 }
