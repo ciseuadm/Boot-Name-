@@ -6,21 +6,27 @@
 // NOT in channel posts. If the capability is ever unavailable, sendMessage /
 // sendPhoto automatically fall back to the plain alt emoji (see tg.ts).
 //
-// IDs resolved from the owner's emoji sets via getStickerSet. Blue-themed picks
-// match the bot's neon avatar; star/gem come from the premium-status set.
+// IDs resolved from the owner's emoji sets via getStickerSet. Curated for a
+// clean, varied "tool" look — each emoji carries a distinct meaning so messages
+// don't repeat the same icon.
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ce = ce;
 exports.stripCustomEmoji = stripCustomEmoji;
 const E = {
-    check: { id: '5379666011068835203', alt: '✅' },
-    bolt: { id: '5377834924776627189', alt: '⚡' },
-    fire: { id: '5377486534209446615', alt: '🔥' },
-    spark: { id: '5377321293932668025', alt: '✨' },
-    star: { id: '5271725786338961325', alt: '⭐' },
-    hand: { id: '5978856151209480380', alt: '🤝' },
-    gem: { id: '5271886843317590490', alt: '💎' },
-    rocket: { id: '5352842574505715880', alt: '🚀' },
-    cross: { id: '5377399483812290165', alt: '❌' },
+    check: { id: '5305417687357203905', alt: '✅' }, // Icon_2023 — confirmations / title
+    ninja: { id: '5321362835047985289', alt: '🥷' }, // cwdinfo — stealth: no "edited" mark
+    noentry: { id: '5341513541700569186', alt: '🚫' }, // vector_basic_jaba — no ads/watermark
+    bolt: { id: '5303290914041505430', alt: '⚡' }, // Icon_2023 — speed
+    chart: { id: '5282734530547951466', alt: '📊' }, // AR_PREMIUM — analytics
+    alarm: { id: '4967525849902350972', alt: '⏰' }, // AnimatedIcon9 — scheduling
+    rocket: { id: '5868484743061834951', alt: '🚀' }, // iconemoji1 — call to action
+    star: { id: '5359726243145064513', alt: '⭐' }, // IconsEmoji — premium marker
+    gem: { id: '5271886843317590490', alt: '💎' }, // emojipremiumstatus — premium
+    fire: { id: '5377486534209446615', alt: '🔥' }, // bluerandom1 — hot / popular
+    hand: { id: '5978856151209480380', alt: '🤝' }, // iconemoji1 — referral
+    spark: { id: '5377321293932668025', alt: '✨' }, // bluerandom1 — clean / shiny
+    link: { id: '5377792383125561840', alt: '🔗' }, // bluerandom1 — links
+    money: { id: '5242532245087984921', alt: '💰' }, // Golden_Icons — earnings
 };
 /** Returns an HTML <tg-emoji> tag for the named premium emoji. */
 function ce(name) {
