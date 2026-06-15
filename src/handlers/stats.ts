@@ -1,4 +1,5 @@
 import { sendMessage } from '../tg';
+import { ce } from '../emoji';
 import { isPremium, setStatsEnabled, getUser, getUserTrackedLinks, getPostStats } from '../db';
 import { parsePostLink } from '../parser';
 
@@ -13,9 +14,9 @@ export async function handleStatsCommand(
   if (!premium) {
     await sendMessage(
       chatId,
-      `📊 <b>Аналитика кликов</b> — функция Premium.\n\n` +
+      `${ce('chart')} <b>Аналитика кликов</b> — функция Premium.\n\n` +
         `Автоматически считает клики по каждой кнопке в твоих постах.\n\n` +
-        `✨ /premium — подключить`,
+        `${ce('gem')} /premium — подключить`,
     );
     return;
   }
@@ -26,7 +27,7 @@ export async function handleStatsCommand(
     await setStatsEnabled(userId, true);
     await sendMessage(
       chatId,
-      `📊 <b>Отслеживание кликов включено!</b>\n\n` +
+      `${ce('eye')} <b>Отслеживание кликов включено!</b>\n\n` +
         `Теперь при /add все URL кнопок автоматически становятся отслеживаемыми.\n` +
         `Клики считаются и доступны по команде /stats`,
     );
@@ -35,7 +36,7 @@ export async function handleStatsCommand(
 
   if (trimmed === 'off' || trimmed === 'выкл') {
     await setStatsEnabled(userId, false);
-    await sendMessage(chatId, '📊 Отслеживание кликов выключено.');
+    await sendMessage(chatId, `${ce('noentry')} Отслеживание кликов выключено.`);
     return;
   }
 
@@ -46,7 +47,7 @@ export async function handleStatsCommand(
   if (!enabled) {
     await sendMessage(
       chatId,
-      `📊 <b>Аналитика кликов</b>\n\nОтслеживание: <b>выключено</b>\n\nВключи командой <code>/stats on</code> — и каждая новая кнопка будет считать клики.`,
+      `${ce('chart')} <b>Аналитика кликов</b>\n\nОтслеживание: <b>выключено</b>\n\nВключи командой <code>/stats on</code> — и каждая новая кнопка будет считать клики.`,
     );
     return;
   }
@@ -55,7 +56,7 @@ export async function handleStatsCommand(
   if (links.length === 0) {
     await sendMessage(
       chatId,
-      `📊 <b>Аналитика кликов</b>\n\nОтслеживание: <b>включено ✅</b>\n\nДанных пока нет. Добавь кнопки командой /add — клики начнут считаться.`,
+      `${ce('chartup')} <b>Аналитика кликов</b>\n\nОтслеживание: <b>включено</b> ${ce('check')}\n\nДанных пока нет. Добавь кнопки командой /add — клики начнут считаться.`,
     );
     return;
   }
@@ -71,7 +72,7 @@ export async function handleStatsCommand(
 
   await sendMessage(
     chatId,
-    `📊 <b>Аналитика кликов</b>\n\nОтслеживание: <b>включено ✅</b>\nВсего кликов: <b>${totalClicks}</b>\n\n${lines}` +
+    `${ce('chartup')} <b>Аналитика кликов</b>\n\nОтслеживание: <b>включено</b> ${ce('check')}\nВсего кликов: <b>${totalClicks}</b>\n\n${lines}` +
       (links.length > 10 ? `\n\n<i>и ещё ${links.length - 10}...</i>` : '') +
       `\n\n<b>Статистика по посту:</b> отправь /stats и ссылку на пост`,
   );
@@ -85,19 +86,19 @@ export async function handlePostStats(
 ): Promise<void> {
   const premium = await isPremium(userId);
   if (!premium) {
-    await sendMessage(chatId, '📊 Аналитика доступна в Premium. /premium');
+    await sendMessage(chatId, `${ce('gem')} Аналитика доступна в Premium. /premium`);
     return;
   }
 
   const parsed = parsePostLink(text);
   if (!parsed) {
-    await sendMessage(chatId, '❌ Не распознал ссылку на пост.');
+    await sendMessage(chatId, `${ce('warning')} Не распознал ссылку на пост.`);
     return;
   }
 
   const links = await getPostStats(userId, String(parsed.chatId), parsed.messageId);
   if (links.length === 0) {
-    await sendMessage(chatId, '📊 По этому посту нет данных. Убедись, что кнопки добавлены с отслеживанием.');
+    await sendMessage(chatId, `${ce('chart')} По этому посту нет данных. Убедись, что кнопки добавлены с отслеживанием.`);
     return;
   }
 
@@ -108,6 +109,6 @@ export async function handlePostStats(
 
   await sendMessage(
     chatId,
-    `📊 <b>Статистика поста</b>\n\nВсего кликов: <b>${total}</b>\n\n${lines}`,
+    `${ce('chartup')} <b>Статистика поста</b>\n\nВсего кликов: <b>${total}</b>\n\n${lines}`,
   );
 }

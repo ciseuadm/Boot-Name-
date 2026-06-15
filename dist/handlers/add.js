@@ -38,6 +38,7 @@ exports.handleAddCommand = handleAddCommand;
 exports.handleLinkAdd = handleLinkAdd;
 exports.handleButtonsInput = handleButtonsInput;
 const tg_1 = require("../tg");
+const emoji_1 = require("../emoji");
 const db_1 = require("../db");
 const parser_1 = require("../parser");
 exports.BUTTON_FORMAT_HELP = `<b>Формат кнопок:</b>
@@ -60,24 +61,24 @@ async function handleAddCommand(userId, chatId, states, premium) {
     if (!premium) {
         const used = await (0, db_1.getDailyUsage)(userId);
         if (used >= db_1.FREE_DAILY_LIMIT) {
-            await (0, tg_1.sendMessage)(chatId, `⚠️ <b>Лимит исчерпан</b>\n\nБесплатный тариф: ${db_1.FREE_DAILY_LIMIT} применений кнопок в сутки.\nЛимит обновится через несколько часов.\n\n✨ <b>Premium</b> снимает все ограничения.\n👉 /premium — подключить`);
+            await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('warning')} <b>Лимит исчерпан</b>\n\nБесплатный тариф: ${db_1.FREE_DAILY_LIMIT} применений кнопок в сутки.\nЛимит обновится через несколько часов.\n\n${(0, emoji_1.ce)('gem')} <b>Premium</b> снимает все ограничения.\n${(0, emoji_1.ce)('rocket')} /premium — подключить`);
             return;
         }
     }
     states.set(userId, { step: 'waiting_link_add' });
-    await (0, tg_1.sendMessage)(chatId, '🔗 Отправь ссылку на пост в канале.\n\n' +
+    await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('link')} Отправь ссылку на пост в канале.\n\n` +
         'Как получить: зайди в канал → зажми пост → <b>Скопировать ссылку</b>\n\n' +
-        '❌ /cancel — отмена');
+        '/cancel — отмена');
 }
 async function handleLinkAdd(userId, chatId, text, states) {
     const { parsePostLink } = await Promise.resolve().then(() => __importStar(require('../parser')));
     const parsed = parsePostLink(text);
     if (!parsed) {
-        await (0, tg_1.sendMessage)(chatId, '❌ Не распознал ссылку.\n\n' +
+        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('warning')} Не распознал ссылку.\n\n` +
             'Ожидаю формат:\n' +
             '<code>https://t.me/канал/42</code> — публичный\n' +
             '<code>https://t.me/c/1234567890/42</code> — приватный\n\n' +
-            '❌ /cancel — отмена');
+            '/cancel — отмена');
         return;
     }
     const maxButtons = (await (0, db_1.isPremium)(userId)) ? db_1.PREMIUM_MAX_BUTTONS : db_1.FREE_MAX_BUTTONS;
@@ -91,7 +92,7 @@ async function handleLinkAdd(userId, chatId, text, states) {
     const limitNote = premium
         ? `до ${db_1.PREMIUM_MAX_BUTTONS} кнопок`
         : `до ${db_1.FREE_MAX_BUTTONS} кнопок (Free). <a href="tg://resolve?domain=">Premium</a> — до ${db_1.PREMIUM_MAX_BUTTONS}`;
-    await (0, tg_1.sendMessage)(chatId, `✅ Пост найден! (${limitNote})\n\n${exports.BUTTON_FORMAT_HELP}\n\nОтправь кнопки 👇\n\n❌ /cancel — отмена`);
+    await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('radio')} Пост найден! (${limitNote})\n\n${exports.BUTTON_FORMAT_HELP}\n\nОтправь кнопки 👇\n\n/cancel — отмена`);
 }
 async function handleButtonsInput(userId, chatId, text, state, states) {
     const premium = await (0, db_1.isPremium)(userId);
@@ -99,7 +100,7 @@ async function handleButtonsInput(userId, chatId, text, state, states) {
     const rows = (0, parser_1.parseButtons)(text, maxButtons);
     if (!rows) {
         const limit = premium ? db_1.PREMIUM_MAX_BUTTONS : db_1.FREE_MAX_BUTTONS;
-        await (0, tg_1.sendMessage)(chatId, `❌ Не смог разобрать кнопки.\n\nПроверь формат или лимит (макс. ${limit} кнопок).\n\n${exports.BUTTON_FORMAT_HELP}\n\n❌ /cancel — отмена`);
+        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('warning')} Не смог разобрать кнопки.\n\nПроверь формат или лимит (макс. ${limit} кнопок).\n\n${exports.BUTTON_FORMAT_HELP}\n\n/cancel — отмена`);
         return;
     }
     const { chatId: postChatId, messageId, tracking } = state;
@@ -128,14 +129,14 @@ async function handleButtonsInput(userId, chatId, text, state, states) {
         const total = rows.reduce((s, r) => s + r.length, 0);
         const preview = (0, parser_1.formatButtonPreview)(rows);
         const statsNote = useTracking
-            ? '\n\n📊 Отслеживание кликов включено. Смотри /stats'
+            ? `\n\n${(0, emoji_1.ce)('chart')} Отслеживание кликов включено. Смотри /stats`
             : premium
-                ? '\n\n💡 Включи отслеживание кликов командой /stats on'
+                ? `\n\n${(0, emoji_1.ce)('bulb')} Включи отслеживание кликов командой /stats on`
                 : '';
-        await (0, tg_1.sendMessage)(chatId, `✅ Готово! Добавил ${total} ${btnWord(total)}:\n\n<code>${preview}</code>${statsNote}\n\n💾 Сохранить как шаблон: /save`);
+        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('check')} Готово! Добавил ${total} ${btnWord(total)}:\n\n<code>${preview}</code>${statsNote}\n\n${(0, emoji_1.ce)('dividers')} Сохранить как шаблон: /save`);
     }
     catch (e) {
-        await (0, tg_1.sendMessage)(chatId, `❌ Ошибка: ${e.message}\n\nУбедись, что:\n• Бот — администратор канала\n• Есть право <i>Редактировать сообщения</i>\n• Ссылка ведёт на верный пост`);
+        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('cross')} Ошибка: ${e.message}\n\nУбедись, что:\n• Бот — администратор канала\n• Есть право <i>Редактировать сообщения</i>\n• Ссылка ведёт на верный пост`);
     }
 }
 function btnWord(n) {

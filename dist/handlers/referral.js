@@ -38,6 +38,7 @@ exports.handleRefCommand = handleRefCommand;
 exports.notifyReferrer = notifyReferrer;
 const tg_1 = require("../tg");
 const db_1 = require("../db");
+const emoji_1 = require("../emoji");
 // Called on /start ref_CODE — register referral for new user
 async function processReferral(newUserId, code) {
     const referrer = await (0, db_1.getUserByReferralCode)(code);
@@ -59,16 +60,16 @@ async function handleRefCommand(userId, chatId) {
     const count = user.referral_count;
     const nextBonus = 3 - (count % 3);
     const premium = await (0, db_1.isPremium)(userId);
-    await (0, tg_1.sendMessage)(chatId, `🤝 <b>Реферальная программа</b>\n\n` +
+    await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('handshake')} <b>Реферальная программа</b>\n\n` +
         `Твоя ссылка:\n<code>${link}</code>\n\n` +
         `Как работает:\n` +
-        `• Друг переходит по твоей ссылке и получает <b>1 день Premium бесплатно</b>\n` +
-        `• Ты получаешь <b>+1 день Premium</b> за каждого\n` +
-        `• Каждые 3 реферала = <b>+5 дней Premium</b> бонусом\n\n` +
-        `📊 Твоя статистика:\n` +
-        `Рефералов: <b>${count}</b>\n` +
+        `${(0, emoji_1.ce)('gift')} Друг переходит по твоей ссылке и получает <b>1 день Premium бесплатно</b>\n` +
+        `${(0, emoji_1.ce)('star')} Ты получаешь <b>+1 день Premium</b> за каждого\n` +
+        `${(0, emoji_1.ce)('fire')} Каждые 3 реферала = <b>+5 дней Premium</b> бонусом\n\n` +
+        `${(0, emoji_1.ce)('chart')} Твоя статистика:\n` +
+        `${(0, emoji_1.ce)('people')} Рефералов: <b>${count}</b>\n` +
         `До следующего бонуса (+5 дней): <b>${nextBonus}</b>\n` +
-        (premium ? '' : '\n💡 Начни делиться ссылкой прямо сейчас!'));
+        (premium ? '' : `\n${(0, emoji_1.ce)('bulb')} Начни делиться ссылкой прямо сейчас!`));
 }
 // Called after successful referral — notify referrer
 async function notifyReferrer(referrerId, newUserName) {
@@ -77,8 +78,8 @@ async function notifyReferrer(referrerId, newUserName) {
         return;
     const { sendMessage: send } = await Promise.resolve().then(() => __importStar(require('../tg')));
     const count = referrer.referral_count;
-    const bonusMsg = count % 3 === 0 ? '\n🎁 Бонус: <b>+5 дней Premium</b> за 3 реферала!' : '';
-    await send(referrerId, `🎉 По твоей реферальной ссылке зарегистрировался новый пользователь!\n` +
+    const bonusMsg = count % 3 === 0 ? `\n${(0, emoji_1.ce)('fire')} Бонус: <b>+5 дней Premium</b> за 3 реферала!` : '';
+    await send(referrerId, `${(0, emoji_1.ce)('gift')} По твоей реферальной ссылке зарегистрировался новый пользователь!\n` +
         `Ты получил <b>+1 день Premium</b>.${bonusMsg}\n\n` +
         `Всего рефералов: ${count}`).catch(() => { });
 }

@@ -8,6 +8,7 @@ exports.handlePreCheckout = handlePreCheckout;
 exports.handleSuccessfulPayment = handleSuccessfulPayment;
 const tg_1 = require("../tg");
 const db_1 = require("../db");
+const emoji_1 = require("../emoji");
 // Stars pricing
 exports.PLANS = {
     monthly: { stars: 149, months: 1, label: '1 месяц', key: 'premium_monthly' },
@@ -18,20 +19,20 @@ async function handlePremiumCommand(userId, chatId) {
     const user = await (0, db_1.getUser)(userId);
     const premium = await (0, db_1.isPremium)(userId);
     const statusLine = premium
-        ? `✅ <b>Premium активен</b>` +
+        ? `${(0, emoji_1.ce)('crown')} <b>Premium активен</b>` +
             (user?.premium_until
                 ? ` до ${new Date(user.premium_until).toLocaleDateString('ru-RU')}`
                 : ' (бессрочно)')
-        : `📦 Тариф: <b>Free</b>`;
+        : `Тариф: <b>Free</b>`;
     const freeNote = premium
         ? ''
         : `\n<b>Free:</b> ${db_1.FREE_DAILY_LIMIT} постов/сутки · ${db_1.FREE_MAX_BUTTONS} кнопок · ${db_1.FREE_MAX_TEMPLATES} шаблона\n` +
             `<b>Premium:</b> безлимит · ${db_1.PREMIUM_MAX_BUTTONS} кнопок · ${db_1.PREMIUM_MAX_TEMPLATES} шаблонов · отложенные кнопки · аналитика кликов\n`;
-    await (0, tg_1.sendMessage)(chatId, `⭐ <b>Add Button Premium</b>\n\n${statusLine}\n${freeNote}\n` +
+    await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('gem')} <b>Add Button Premium</b>\n\n${statusLine}\n${freeNote}\n` +
         `Оплата — Telegram Stars (покупаются прямо в Telegram):\n\n` +
-        `• /buy_monthly — <b>${exports.PLANS.monthly.stars} Stars / месяц</b>\n` +
-        `• /buy_yearly — <b>${exports.PLANS.yearly.stars} Stars / год</b> (экономия 45%)\n\n` +
-        `⭐ Реферальная программа — бесплатный Premium: /ref`);
+        `${(0, emoji_1.ce)('star')} /buy_monthly — <b>${exports.PLANS.monthly.stars} Stars / месяц</b>\n` +
+        `${(0, emoji_1.ce)('fire')} /buy_yearly — <b>${exports.PLANS.yearly.stars} Stars / год</b> (экономия 45%)\n\n` +
+        `${(0, emoji_1.ce)('handshake')} Реферальная программа — бесплатный Premium: /ref`);
 }
 // ── /buy_monthly / /buy_yearly ────────────────────────────────────────────────
 async function handleBuyMonthly(userId, chatId) {
@@ -79,7 +80,7 @@ async function handleSuccessfulPayment(msg) {
     const until = user?.premium_until
         ? new Date(user.premium_until).toLocaleDateString('ru-RU')
         : '?';
-    await (0, tg_1.sendMessage)(chatId, `🎉 <b>Premium активирован!</b>\n\n` +
+    await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('crown')} <b>Premium активирован!</b>\n\n` +
         `Тариф: ${planLabel}\n` +
         `Действует до: ${until}\n\n` +
         `Что теперь доступно:\n` +
@@ -88,5 +89,5 @@ async function handleSuccessfulPayment(msg) {
         `• До ${db_1.PREMIUM_MAX_TEMPLATES} шаблонов\n` +
         `• Отложенные кнопки: /schedule\n` +
         `• Аналитика кликов: /stats on\n\n` +
-        `Спасибо за поддержку! ⭐`);
+        `Спасибо за поддержку! ${(0, emoji_1.ce)('gem')}`);
 }

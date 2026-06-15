@@ -1,4 +1,5 @@
 import { sendMessage, editMarkup, WEBHOOK_URL } from '../tg';
+import { ce } from '../emoji';
 import {
   isPremium,
   logUsage,
@@ -40,7 +41,7 @@ export async function handleAddCommand(
     if (used >= FREE_DAILY_LIMIT) {
       await sendMessage(
         chatId,
-        `⚠️ <b>Лимит исчерпан</b>\n\nБесплатный тариф: ${FREE_DAILY_LIMIT} применений кнопок в сутки.\nЛимит обновится через несколько часов.\n\n✨ <b>Premium</b> снимает все ограничения.\n👉 /premium — подключить`,
+        `${ce('warning')} <b>Лимит исчерпан</b>\n\nБесплатный тариф: ${FREE_DAILY_LIMIT} применений кнопок в сутки.\nЛимит обновится через несколько часов.\n\n${ce('gem')} <b>Premium</b> снимает все ограничения.\n${ce('rocket')} /premium — подключить`,
       );
       return;
     }
@@ -49,9 +50,9 @@ export async function handleAddCommand(
   states.set(userId, { step: 'waiting_link_add' });
   await sendMessage(
     chatId,
-    '🔗 Отправь ссылку на пост в канале.\n\n' +
+    `${ce('link')} Отправь ссылку на пост в канале.\n\n` +
       'Как получить: зайди в канал → зажми пост → <b>Скопировать ссылку</b>\n\n' +
-      '❌ /cancel — отмена',
+      '/cancel — отмена',
   );
 }
 
@@ -66,11 +67,11 @@ export async function handleLinkAdd(
   if (!parsed) {
     await sendMessage(
       chatId,
-      '❌ Не распознал ссылку.\n\n' +
+      `${ce('warning')} Не распознал ссылку.\n\n` +
         'Ожидаю формат:\n' +
         '<code>https://t.me/канал/42</code> — публичный\n' +
         '<code>https://t.me/c/1234567890/42</code> — приватный\n\n' +
-        '❌ /cancel — отмена',
+        '/cancel — отмена',
     );
     return;
   }
@@ -91,7 +92,7 @@ export async function handleLinkAdd(
 
   await sendMessage(
     chatId,
-    `✅ Пост найден! (${limitNote})\n\n${BUTTON_FORMAT_HELP}\n\nОтправь кнопки 👇\n\n❌ /cancel — отмена`,
+    `${ce('radio')} Пост найден! (${limitNote})\n\n${BUTTON_FORMAT_HELP}\n\nОтправь кнопки 👇\n\n/cancel — отмена`,
   );
 }
 
@@ -110,7 +111,7 @@ export async function handleButtonsInput(
     const limit = premium ? PREMIUM_MAX_BUTTONS : FREE_MAX_BUTTONS;
     await sendMessage(
       chatId,
-      `❌ Не смог разобрать кнопки.\n\nПроверь формат или лимит (макс. ${limit} кнопок).\n\n${BUTTON_FORMAT_HELP}\n\n❌ /cancel — отмена`,
+      `${ce('warning')} Не смог разобрать кнопки.\n\nПроверь формат или лимит (макс. ${limit} кнопок).\n\n${BUTTON_FORMAT_HELP}\n\n/cancel — отмена`,
     );
     return;
   }
@@ -154,19 +155,19 @@ export async function handleButtonsInput(
     const total = rows.reduce((s, r) => s + r.length, 0);
     const preview = formatButtonPreview(rows);
     const statsNote = useTracking
-      ? '\n\n📊 Отслеживание кликов включено. Смотри /stats'
+      ? `\n\n${ce('chart')} Отслеживание кликов включено. Смотри /stats`
       : premium
-      ? '\n\n💡 Включи отслеживание кликов командой /stats on'
+      ? `\n\n${ce('bulb')} Включи отслеживание кликов командой /stats on`
       : '';
 
     await sendMessage(
       chatId,
-      `✅ Готово! Добавил ${total} ${btnWord(total)}:\n\n<code>${preview}</code>${statsNote}\n\n💾 Сохранить как шаблон: /save`,
+      `${ce('check')} Готово! Добавил ${total} ${btnWord(total)}:\n\n<code>${preview}</code>${statsNote}\n\n${ce('dividers')} Сохранить как шаблон: /save`,
     );
   } catch (e) {
     await sendMessage(
       chatId,
-      `❌ Ошибка: ${(e as Error).message}\n\nУбедись, что:\n• Бот — администратор канала\n• Есть право <i>Редактировать сообщения</i>\n• Ссылка ведёт на верный пост`,
+      `${ce('cross')} Ошибка: ${(e as Error).message}\n\nУбедись, что:\n• Бот — администратор канала\n• Есть право <i>Редактировать сообщения</i>\n• Ссылка ведёт на верный пост`,
     );
   }
 }

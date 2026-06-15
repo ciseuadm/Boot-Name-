@@ -1,4 +1,5 @@
 import { sendMessage, ADMIN_IDS, tg } from '../tg';
+import { ce } from '../emoji';
 import { getAdminStats, getAllUserIds, grantPremium, getUser } from '../db';
 import type { UserState } from '../bot';
 
@@ -14,14 +15,14 @@ export async function handleAdminCommand(userId: number, chatId: number): Promis
 
   await sendMessage(
     chatId,
-    `🛠 <b>Admin Panel</b>\n\n` +
-      `👥 Всего пользователей: <b>${s.totalUsers}</b>\n` +
-      `⭐ Premium: <b>${s.premiumUsers}</b>\n` +
-      `📆 DAU (24ч): <b>${s.dau}</b>\n` +
-      `📋 Шаблонов: <b>${s.totalTemplates}</b>\n` +
-      `⏰ Задач в очереди: <b>${s.pendingTasks}</b>\n` +
-      `💳 Оплат: <b>${s.totalPayments}</b>\n` +
-      `📊 Всего кликов: <b>${s.totalClicks}</b>\n\n` +
+    `${ce('lock')} <b>Admin Panel</b>\n\n` +
+      `${ce('people')} Всего пользователей: <b>${s.totalUsers}</b>\n` +
+      `${ce('crown')} Premium: <b>${s.premiumUsers}</b>\n` +
+      `${ce('bolt')} DAU (24ч): <b>${s.dau}</b>\n` +
+      `${ce('dividers')} Шаблонов: <b>${s.totalTemplates}</b>\n` +
+      `${ce('alarm')} Задач в очереди: <b>${s.pendingTasks}</b>\n` +
+      `${ce('money')} Оплат: <b>${s.totalPayments}</b>\n` +
+      `${ce('chart')} Всего кликов: <b>${s.totalClicks}</b>\n\n` +
       `<b>Команды:</b>\n` +
       `/grant_premium USER_ID MONTHS\n` +
       `/broadcast ТЕКСТ`,
@@ -47,17 +48,17 @@ export async function handleGrantPremium(
 
   const user = await getUser(userId);
   if (!user) {
-    await sendMessage(chatId, `❌ Пользователь ${userId} не найден в БД.`);
+    await sendMessage(chatId, `${ce('cross')} Пользователь ${userId} не найден в БД.`);
     return;
   }
 
   await grantPremium(userId, months);
-  await sendMessage(chatId, `✅ Premium выдан: ${userId} на ${months} месяцев.`);
+  await sendMessage(chatId, `${ce('check')} Premium выдан: ${userId} на ${months} месяцев.`);
 
   // Notify the user
   await sendMessage(
     userId,
-    `🎁 Тебе выдан <b>Premium на ${months} месяцев</b>!\n\nПриятного использования ⭐`,
+    `${ce('gift')} Тебе выдан <b>Premium на ${months} месяцев</b>!\n\nПриятного использования ${ce('crown')}`,
   ).catch(() => {});
 }
 
@@ -72,7 +73,7 @@ export async function handleBroadcast(
 
   if (!text.trim()) {
     states.set(adminId, { step: 'waiting_broadcast_text' });
-    await sendMessage(chatId, '📢 Введи текст для рассылки:\n\n❌ /cancel — отмена');
+    await sendMessage(chatId, `${ce('megaphone')} Введи текст для рассылки:\n\n/cancel — отмена`);
     return;
   }
 
@@ -91,7 +92,7 @@ export async function handleBroadcastText(
 
 async function doBroadcast(adminId: number, chatId: number, text: string): Promise<void> {
   const userIds = await getAllUserIds();
-  await sendMessage(chatId, `📢 Начинаю рассылку ${userIds.length} пользователям...`);
+  await sendMessage(chatId, `${ce('megaphone')} Начинаю рассылку ${userIds.length} пользователям...`);
 
   let sent = 0;
   let failed = 0;
@@ -107,7 +108,7 @@ async function doBroadcast(adminId: number, chatId: number, text: string): Promi
     await sleep(35);
   }
 
-  await sendMessage(chatId, `✅ Рассылка завершена.\nОтправлено: ${sent}\nОшибок: ${failed}`);
+  await sendMessage(chatId, `${ce('check')} Рассылка завершена.\nОтправлено: ${sent}\nОшибок: ${failed}`);
 }
 
 function sleep(ms: number): Promise<void> {

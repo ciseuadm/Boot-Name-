@@ -72,39 +72,41 @@ ${ce('bolt')} Кнопки появляются за пару секунд
 ${ce('chart')} Аналитика кликов · ${ce('alarm')} отложенный постинг
 
 <b>Старт за 3 шага:</b>
-1️⃣ Добавь меня в админы канала
-2️⃣ Включи право «Редактировать сообщения»
-3️⃣ Жми /add ${ce('rocket')}
+${ce('num1')} Добавь меня в админы канала
+${ce('num2')} Включи право «Редактировать сообщения»
+${ce('num3')} Жми /add ${ce('rocket')}
 
 Все команды — /help`;
 
 // Full command reference shown on /help
-const HELP = `${ce('check')}  <b>Add Button Bot</b>
+const HELP = `${ce('book')}  <b>Add Button Bot</b>
 
 Добавляю, меняю и удаляю кнопки под постами канала — без пометки «изменено» и без рекламных подписей на постах.
 
 <b>Команды:</b>
 
-/add — добавить кнопки к посту
-/remove — удалить кнопки с поста
-/templates — шаблоны кнопок
-/schedule — отложить добавление ${ce('star')}
-/stats — аналитика кликов ${ce('star')}
-/premium — тариф и подписка
-/ref — реферальная программа
+${ce('plus')} /add — добавить кнопки к посту
+${ce('trash')} /remove — удалить кнопки с поста
+${ce('dividers')} /templates — шаблоны кнопок
+${ce('alarm')} /schedule — отложить добавление
+${ce('chartup')} /stats — аналитика кликов
+${ce('gem')} /premium — тариф и подписка
+${ce('handshake')} /ref — реферальная программа
 
-<b>Как начать:</b>
+${ce('star')} /schedule и /stats доступны в Premium
+
+<b>${ce('bulb')} Как начать:</b>
 
 Добавь меня в администраторы своего канала
 Выдай право «Редактировать сообщения»
 Отправь /add и следуй инструкции`;
 
-const AVATAR_URL = WEBHOOK_URL ? `${WEBHOOK_URL}/avatar.png` : '';
+const BANNER_URL = WEBHOOK_URL ? `${WEBHOOK_URL}/banner.png` : '';
 
 async function sendWelcome(chatId: number, caption: string): Promise<void> {
-  if (AVATAR_URL) {
+  if (BANNER_URL) {
     try {
-      await sendPhoto(chatId, AVATAR_URL, caption);
+      await sendPhoto(chatId, BANNER_URL, caption);
       return;
     } catch {
       // Fall back to plain text if photo delivery fails
@@ -158,7 +160,7 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
   // ── /cancel ────────────────────────────────────────────────────────────────
   if (raw === '/cancel') {
     states.set(userId, { step: 'idle' });
-    await sendMessage(chatId, '❌ Отменено.');
+    await sendMessage(chatId, `${ce('cross')} Отменено.`);
     return;
   }
 
@@ -181,8 +183,8 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
     }
 
     const premium = await isPremium(userId);
-    const badge = premium ? ' ⭐' : '';
-    const trialNote = isNewRef ? '\n\n🎁 Тебе начислен 1 день Premium в подарок!' : '';
+    const badge = premium ? ` ${ce('crown')}` : '';
+    const trialNote = isNewRef ? `\n\n${ce('gift')} Тебе начислен 1 день Premium в подарок!` : '';
 
     await sendWelcome(chatId, WELCOME + badge + trialNote);
     return;
@@ -357,6 +359,6 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
   // ── Default ────────────────────────────────────────────────────────────────
   await sendMessage(
     chatId,
-    '💡 Напиши /add чтобы добавить кнопки к посту, или /help для справки.',
+    `${ce('bulb')} Напиши /add чтобы добавить кнопки к посту, или /help для справки.`,
   );
 }

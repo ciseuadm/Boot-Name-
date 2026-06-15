@@ -7,6 +7,7 @@ exports.startScheduler = startScheduler;
 const node_cron_1 = __importDefault(require("node-cron"));
 const db_1 = require("./db");
 const tg_1 = require("./tg");
+const emoji_1 = require("./emoji");
 const parser_1 = require("./parser");
 const db_2 = require("./db");
 function startScheduler() {
@@ -36,11 +37,11 @@ async function runTask(id, userId, postChatId, postMessageId, buttonsText) {
         };
         await (0, tg_1.editMarkup)(postChatId, postMessageId, markup);
         await (0, db_1.markTaskDone)(id);
-        await (0, tg_1.sendMessage)(userId, `✅ Отложенная задача выполнена!\n\nКнопки добавлены к посту ${postChatId}/${postMessageId}.`).catch(() => { });
+        await (0, tg_1.sendMessage)(userId, `${(0, emoji_1.ce)('check')} Отложенная задача выполнена!\n\nКнопки добавлены к посту ${postChatId}/${postMessageId}.`).catch(() => { });
     }
     catch (e) {
         const errMsg = e.message;
         await (0, db_1.markTaskFailed)(id, errMsg);
-        await (0, tg_1.sendMessage)(userId, `❌ Ошибка отложенной задачи #${id}:\n${errMsg}\n\nУбедись, что бот — администратор канала.`).catch(() => { });
+        await (0, tg_1.sendMessage)(userId, `${(0, emoji_1.ce)('cross')} Ошибка отложенной задачи #${id}:\n${errMsg}\n\nУбедись, что бот — администратор канала.`).catch(() => { });
     }
 }

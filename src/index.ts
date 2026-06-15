@@ -10,10 +10,14 @@ const PORT = parseInt(process.env.PORT ?? '3000', 10);
 const app = express();
 app.use(express.json());
 
-// ── Bot avatar (used in /start welcome) ──────────────────────────────────────
+// ── Bot images (used in /start welcome) ──────────────────────────────────────
 
 app.get('/avatar.png', (_req, res) => {
   res.sendFile(path.join(process.cwd(), 'assets', 'avatars', 'avatar-2-dark-neon.png'));
+});
+
+app.get('/banner.png', (_req, res) => {
+  res.sendFile(path.join(process.cwd(), 'assets', 'banner-dark-neon.png'));
 });
 
 // ── Telegram webhook ─────────────────────────────────────────────────────────

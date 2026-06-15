@@ -16,6 +16,7 @@ import {
 } from '../db';
 import { parsePostLink, parseButtons, formatButtonPreview, InlineButton } from '../parser';
 import { FREE_MAX_BUTTONS, PREMIUM_MAX_BUTTONS } from '../db';
+import { ce } from '../emoji';
 import type { UserState } from '../bot';
 
 // ── /templates ───────────────────────────────────────────────────────────────
@@ -30,8 +31,8 @@ export async function handleTemplatesCommand(
 
   if (templates.length === 0) {
     const hint = premium
-      ? 'У тебя пока нет шаблонов.\n\nСохрани набор кнопок командой <code>/save Название</code> после команды /add.'
-      : `У тебя пока нет шаблонов.\n\n✨ <b>Premium</b> — до ${PREMIUM_MAX_TEMPLATES} шаблонов. <b>Free</b> — до ${FREE_MAX_TEMPLATES}.\n\nСохрани набор кнопок: /add → добавь кнопки → потом <code>/save Название</code>`;
+      ? `${ce('bulb')} У тебя пока нет шаблонов.\n\nСохрани набор кнопок командой <code>/save Название</code> после команды /add.`
+      : `${ce('bulb')} У тебя пока нет шаблонов.\n\n${ce('gem')} <b>Premium</b> — до ${PREMIUM_MAX_TEMPLATES} шаблонов. <b>Free</b> — до ${FREE_MAX_TEMPLATES}.\n\nСохрани набор кнопок: /add → добавь кнопки → потом <code>/save Название</code>`;
     await sendMessage(chatId, hint);
     return;
   }
@@ -40,7 +41,7 @@ export async function handleTemplatesCommand(
   const maxLabel = premium ? PREMIUM_MAX_TEMPLATES : FREE_MAX_TEMPLATES;
   await sendMessage(
     chatId,
-    `📋 <b>Твои шаблоны</b> (${templates.length}/${maxLabel}):\n\n${lines}\n\n` +
+    `${ce('dividers')} <b>Твои шаблоны</b> (${templates.length}/${maxLabel}):\n\n${lines}\n\n` +
       `Применить: <code>/apply Название</code>\n` +
       `Удалить: <code>/del Название</code>`,
   );
@@ -61,8 +62,8 @@ export async function handleSaveCommand(
   if (count >= maxT) {
     await sendMessage(
       chatId,
-      `⚠️ Лимит шаблонов: ${maxT}.\n${
-        premium ? 'Удали ненужный шаблон командой /del.' : '✨ /premium — до ' + PREMIUM_MAX_TEMPLATES + ' шаблонов'
+      `${ce('warning')} Лимит шаблонов: ${maxT}.\n${
+        premium ? 'Удали ненужный шаблон командой /del.' : ce('gem') + ' /premium — до ' + PREMIUM_MAX_TEMPLATES + ' шаблонов'
       }`,
     );
     return;
@@ -71,14 +72,14 @@ export async function handleSaveCommand(
   const name = arg.trim();
   if (!name) {
     states.set(userId, { step: 'waiting_template_name_save' });
-    await sendMessage(chatId, '💾 Как назвать шаблон? Введи название:\n\n❌ /cancel — отмена');
+    await sendMessage(chatId, `${ce('pencil')} Как назвать шаблон? Введи название:\n\n/cancel — отмена`);
     return;
   }
 
   states.set(userId, { step: 'waiting_template_buttons_save', name });
   await sendMessage(
     chatId,
-    `💾 Отправь кнопки для шаблона <b>"${name}"</b>:\n\nФормат: <code>Текст | URL</code> (каждая строка — ряд)\n\n❌ /cancel — отмена`,
+    `${ce('puzzle')} Отправь кнопки для шаблона <b>"${name}"</b>:\n\nФормат: <code>Текст | URL</code> (каждая строка — ряд)\n\n/cancel — отмена`,
   );
 }
 
@@ -94,14 +95,14 @@ export async function handleTemplateName(
 
   if (count >= maxT) {
     states.set(userId, { step: 'idle' });
-    await sendMessage(chatId, `⚠️ Лимит шаблонов: ${maxT}. Удали ненужный командой /del.`);
+    await sendMessage(chatId, `${ce('warning')} Лимит шаблонов: ${maxT}. Удали ненужный командой /del.`);
     return;
   }
 
   states.set(userId, { step: 'waiting_template_buttons_save', name });
   await sendMessage(
     chatId,
-    `💾 Отправь кнопки для шаблона <b>"${name}"</b>:\n\nФормат: <code>Текст | URL</code>\n\n❌ /cancel — отмена`,
+    `${ce('puzzle')} Отправь кнопки для шаблона <b>"${name}"</b>:\n\nФормат: <code>Текст | URL</code>\n\n/cancel — отмена`,
   );
 }
 
@@ -119,7 +120,7 @@ export async function handleTemplateButtonsSave(
   if (!rows) {
     await sendMessage(
       chatId,
-      `❌ Не смог разобрать кнопки. Проверь формат (макс. ${maxButtons} кнопок).\n\n❌ /cancel — отмена`,
+      `${ce('warning')} Не смог разобрать кнопки. Проверь формат (макс. ${maxButtons} кнопок).\n\n/cancel — отмена`,
     );
     return;
   }
@@ -129,7 +130,7 @@ export async function handleTemplateButtonsSave(
   const preview = formatButtonPreview(rows);
   await sendMessage(
     chatId,
-    `✅ Шаблон <b>"${name}"</b> сохранён!\n\n<code>${preview}</code>\n\nПрименить: <code>/apply ${name}</code>`,
+    `${ce('check')} Шаблон <b>"${name}"</b> сохранён!\n\n<code>${preview}</code>\n\nПрименить: <code>/apply ${name}</code>`,
   );
 }
 
@@ -144,25 +145,25 @@ export async function handleApplyCommand(
   if (!arg.trim()) {
     const templates = await getTemplates(userId);
     if (templates.length === 0) {
-      await sendMessage(chatId, 'У тебя нет шаблонов. Создай шаблон командой /save.');
+      await sendMessage(chatId, `${ce('bulb')} У тебя нет шаблонов. Создай шаблон командой /save.`);
       return;
     }
     const list = templates.map(t => `• <code>/apply ${t.name}</code>`).join('\n');
-    await sendMessage(chatId, `📋 Твои шаблоны:\n\n${list}`);
+    await sendMessage(chatId, `${ce('dividers')} Твои шаблоны:\n\n${list}`);
     return;
   }
 
   const name = arg.trim();
   const template = await getTemplate(userId, name);
   if (!template) {
-    await sendMessage(chatId, `❌ Шаблон <b>"${name}"</b> не найден.\n\nПосмотри список: /templates`);
+    await sendMessage(chatId, `${ce('cross')} Шаблон <b>"${name}"</b> не найден.\n\nПосмотри список: /templates`);
     return;
   }
 
   states.set(userId, { step: 'waiting_template_apply_link', templateName: template.name });
   await sendMessage(
     chatId,
-    `📋 Шаблон <b>"${template.name}"</b> выбран.\n\n🔗 Теперь отправь ссылку на пост:\n\n❌ /cancel — отмена`,
+    `${ce('pushpin')} Шаблон <b>"${template.name}"</b> выбран.\n\n${ce('link')} Теперь отправь ссылку на пост:\n\n/cancel — отмена`,
   );
 }
 
@@ -175,14 +176,14 @@ export async function handleTemplateApplyLink(
 ): Promise<void> {
   const parsed = parsePostLink(text);
   if (!parsed) {
-    await sendMessage(chatId, '❌ Не распознал ссылку. Попробуй ещё раз.\n\n❌ /cancel — отмена');
+    await sendMessage(chatId, `${ce('warning')} Не распознал ссылку. Попробуй ещё раз.\n\n/cancel — отмена`);
     return;
   }
 
   const template = await getTemplate(userId, templateName);
   if (!template) {
     states.set(userId, { step: 'idle' });
-    await sendMessage(chatId, '❌ Шаблон не найден. Возможно, был удалён.');
+    await sendMessage(chatId, `${ce('cross')} Шаблон не найден. Возможно, был удалён.`);
     return;
   }
 
@@ -193,7 +194,7 @@ export async function handleTemplateApplyLink(
       states.set(userId, { step: 'idle' });
       await sendMessage(
         chatId,
-        `⚠️ Дневной лимит (${FREE_DAILY_LIMIT}) исчерпан.\n✨ /premium — безлимит`,
+        `${ce('warning')} Дневной лимит (${FREE_DAILY_LIMIT}) исчерпан.\n${ce('gem')} /premium — безлимит`,
       );
       return;
     }
@@ -203,7 +204,7 @@ export async function handleTemplateApplyLink(
   const rows = parseButtons(template.buttons_text, maxButtons);
   if (!rows) {
     states.set(userId, { step: 'idle' });
-    await sendMessage(chatId, '❌ Шаблон повреждён. Пересохрани его командой /save.');
+    await sendMessage(chatId, `${ce('cross')} Шаблон повреждён. Пересохрани его командой /save.`);
     return;
   }
 
@@ -243,12 +244,12 @@ export async function handleTemplateApplyLink(
     const total = rows.reduce((s, r) => s + r.length, 0);
     await sendMessage(
       chatId,
-      `✅ Шаблон <b>"${template.name}"</b> применён! (${total} ${btnWord(total)})`,
+      `${ce('check')} Шаблон <b>"${template.name}"</b> применён! (${total} ${btnWord(total)})`,
     );
   } catch (e) {
     await sendMessage(
       chatId,
-      `❌ Ошибка: ${(e as Error).message}\n\nУбедись, что бот — администратор канала.`,
+      `${ce('cross')} Ошибка: ${(e as Error).message}\n\nУбедись, что бот — администратор канала.`,
     );
   }
 }
@@ -263,7 +264,7 @@ export async function handleDeleteTemplate(
 ): Promise<void> {
   if (!arg.trim()) {
     states.set(userId, { step: 'waiting_template_delete_name' });
-    await sendMessage(chatId, '🗑 Введи название шаблона для удаления:\n\n❌ /cancel — отмена');
+    await sendMessage(chatId, `${ce('trash')} Введи название шаблона для удаления:\n\n/cancel — отмена`);
     return;
   }
   await doDeleteTemplate(userId, chatId, arg.trim(), states);
@@ -287,9 +288,9 @@ async function doDeleteTemplate(
   states.set(userId, { step: 'idle' });
   const deleted = await deleteTemplate(userId, name);
   if (deleted) {
-    await sendMessage(chatId, `🗑 Шаблон <b>"${name}"</b> удалён.`);
+    await sendMessage(chatId, `${ce('check')} Шаблон <b>"${name}"</b> удалён.`);
   } else {
-    await sendMessage(chatId, `❌ Шаблон <b>"${name}"</b> не найден.\n\nСписок шаблонов: /templates`);
+    await sendMessage(chatId, `${ce('cross')} Шаблон <b>"${name}"</b> не найден.\n\nСписок шаблонов: /templates`);
   }
 }
 

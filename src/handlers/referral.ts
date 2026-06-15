@@ -1,5 +1,6 @@
 import { sendMessage, BOT_USERNAME } from '../tg';
 import { getUser, getUserByReferralCode, recordReferral, grantPremiumDays, isPremium } from '../db';
+import { ce } from '../emoji';
 
 // Called on /start ref_CODE — register referral for new user
 export async function processReferral(newUserId: number, code: string): Promise<void> {
@@ -26,16 +27,16 @@ export async function handleRefCommand(userId: number, chatId: number): Promise<
 
   await sendMessage(
     chatId,
-    `🤝 <b>Реферальная программа</b>\n\n` +
+    `${ce('handshake')} <b>Реферальная программа</b>\n\n` +
       `Твоя ссылка:\n<code>${link}</code>\n\n` +
       `Как работает:\n` +
-      `• Друг переходит по твоей ссылке и получает <b>1 день Premium бесплатно</b>\n` +
-      `• Ты получаешь <b>+1 день Premium</b> за каждого\n` +
-      `• Каждые 3 реферала = <b>+5 дней Premium</b> бонусом\n\n` +
-      `📊 Твоя статистика:\n` +
-      `Рефералов: <b>${count}</b>\n` +
+      `${ce('gift')} Друг переходит по твоей ссылке и получает <b>1 день Premium бесплатно</b>\n` +
+      `${ce('star')} Ты получаешь <b>+1 день Premium</b> за каждого\n` +
+      `${ce('fire')} Каждые 3 реферала = <b>+5 дней Premium</b> бонусом\n\n` +
+      `${ce('chart')} Твоя статистика:\n` +
+      `${ce('people')} Рефералов: <b>${count}</b>\n` +
       `До следующего бонуса (+5 дней): <b>${nextBonus}</b>\n` +
-      (premium ? '' : '\n💡 Начни делиться ссылкой прямо сейчас!'),
+      (premium ? '' : `\n${ce('bulb')} Начни делиться ссылкой прямо сейчас!`),
   );
 }
 
@@ -46,11 +47,11 @@ export async function notifyReferrer(referrerId: number, newUserName: string): P
 
   const { sendMessage: send } = await import('../tg');
   const count = referrer.referral_count;
-  const bonusMsg = count % 3 === 0 ? '\n🎁 Бонус: <b>+5 дней Premium</b> за 3 реферала!' : '';
+  const bonusMsg = count % 3 === 0 ? `\n${ce('fire')} Бонус: <b>+5 дней Premium</b> за 3 реферала!` : '';
 
   await send(
     referrerId,
-    `🎉 По твоей реферальной ссылке зарегистрировался новый пользователь!\n` +
+    `${ce('gift')} По твоей реферальной ссылке зарегистрировался новый пользователь!\n` +
       `Ты получил <b>+1 день Premium</b>.${bonusMsg}\n\n` +
       `Всего рефералов: ${count}`,
   ).catch(() => {});

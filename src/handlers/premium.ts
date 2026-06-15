@@ -1,5 +1,6 @@
 import { sendMessage, sendInvoice, answerPreCheckout, tg, BOT_USERNAME } from '../tg';
 import { getUser, grantPremium, recordPayment, isPremium, FREE_DAILY_LIMIT, FREE_MAX_BUTTONS, FREE_MAX_TEMPLATES, PREMIUM_MAX_BUTTONS, PREMIUM_MAX_TEMPLATES } from '../db';
+import { ce } from '../emoji';
 import type { TgPreCheckoutQuery, TgMessage } from '../tg';
 
 // Stars pricing
@@ -15,11 +16,11 @@ export async function handlePremiumCommand(userId: number, chatId: number): Prom
   const premium = await isPremium(userId);
 
   const statusLine = premium
-    ? `✅ <b>Premium активен</b>` +
+    ? `${ce('crown')} <b>Premium активен</b>` +
       (user?.premium_until
         ? ` до ${new Date(user.premium_until).toLocaleDateString('ru-RU')}`
         : ' (бессрочно)')
-    : `📦 Тариф: <b>Free</b>`;
+    : `Тариф: <b>Free</b>`;
 
   const freeNote = premium
     ? ''
@@ -28,11 +29,11 @@ export async function handlePremiumCommand(userId: number, chatId: number): Prom
 
   await sendMessage(
     chatId,
-    `⭐ <b>Add Button Premium</b>\n\n${statusLine}\n${freeNote}\n` +
+    `${ce('gem')} <b>Add Button Premium</b>\n\n${statusLine}\n${freeNote}\n` +
       `Оплата — Telegram Stars (покупаются прямо в Telegram):\n\n` +
-      `• /buy_monthly — <b>${PLANS.monthly.stars} Stars / месяц</b>\n` +
-      `• /buy_yearly — <b>${PLANS.yearly.stars} Stars / год</b> (экономия 45%)\n\n` +
-      `⭐ Реферальная программа — бесплатный Premium: /ref`,
+      `${ce('star')} /buy_monthly — <b>${PLANS.monthly.stars} Stars / месяц</b>\n` +
+      `${ce('fire')} /buy_yearly — <b>${PLANS.yearly.stars} Stars / год</b> (экономия 45%)\n\n` +
+      `${ce('handshake')} Реферальная программа — бесплатный Premium: /ref`,
   );
 }
 
@@ -114,7 +115,7 @@ export async function handleSuccessfulPayment(msg: TgMessage): Promise<void> {
 
   await sendMessage(
     chatId,
-    `🎉 <b>Premium активирован!</b>\n\n` +
+    `${ce('crown')} <b>Premium активирован!</b>\n\n` +
       `Тариф: ${planLabel}\n` +
       `Действует до: ${until}\n\n` +
       `Что теперь доступно:\n` +
@@ -123,6 +124,6 @@ export async function handleSuccessfulPayment(msg: TgMessage): Promise<void> {
       `• До ${PREMIUM_MAX_TEMPLATES} шаблонов\n` +
       `• Отложенные кнопки: /schedule\n` +
       `• Аналитика кликов: /stats on\n\n` +
-      `Спасибо за поддержку! ⭐`,
+      `Спасибо за поддержку! ${ce('gem')}`,
   );
 }

@@ -1,4 +1,5 @@
 import { sendMessage, editMarkup } from '../tg';
+import { ce } from '../emoji';
 import { parsePostLink } from '../parser';
 import type { UserState } from '../bot';
 
@@ -10,7 +11,7 @@ export async function handleRemoveCommand(
   states.set(userId, { step: 'waiting_link_remove' });
   await sendMessage(
     chatId,
-    '🔗 Отправь ссылку на пост, с которого нужно убрать кнопки.\n\n❌ /cancel — отмена',
+    `${ce('link')} Отправь ссылку на пост, с которого нужно убрать кнопки.\n\n/cancel — отмена`,
   );
 }
 
@@ -24,7 +25,7 @@ export async function handleLinkRemove(
   if (!parsed) {
     await sendMessage(
       chatId,
-      '❌ Не распознал ссылку. Попробуй ещё раз.\n\n❌ /cancel — отмена',
+      `${ce('warning')} Не распознал ссылку. Попробуй ещё раз.\n\n/cancel — отмена`,
     );
     return;
   }
@@ -32,11 +33,11 @@ export async function handleLinkRemove(
   states.set(userId, { step: 'idle' });
   try {
     await editMarkup(parsed.chatId, parsed.messageId, null);
-    await sendMessage(chatId, '✅ Кнопки убраны с поста!');
+    await sendMessage(chatId, `${ce('trash')} Кнопки убраны с поста!`);
   } catch (e) {
     await sendMessage(
       chatId,
-      `❌ Ошибка: ${(e as Error).message}\n\nУбедись, что бот — администратор канала с правом редактировать сообщения.`,
+      `${ce('cross')} Ошибка: ${(e as Error).message}\n\nУбедись, что бот — администратор канала с правом редактировать сообщения.`,
     );
   }
 }

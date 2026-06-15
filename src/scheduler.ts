@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { getPendingTasks, markTaskDone, markTaskFailed } from './db';
 import { editMarkup, sendMessage } from './tg';
+import { ce } from './emoji';
 import { parseButtons } from './parser';
 import { PREMIUM_MAX_BUTTONS } from './db';
 import type { InlineButton } from './parser';
@@ -46,7 +47,7 @@ async function runTask(
 
     await sendMessage(
       userId,
-      `✅ Отложенная задача выполнена!\n\nКнопки добавлены к посту ${postChatId}/${postMessageId}.`,
+      `${ce('check')} Отложенная задача выполнена!\n\nКнопки добавлены к посту ${postChatId}/${postMessageId}.`,
     ).catch(() => {});
   } catch (e) {
     const errMsg = (e as Error).message;
@@ -54,7 +55,7 @@ async function runTask(
 
     await sendMessage(
       userId,
-      `❌ Ошибка отложенной задачи #${id}:\n${errMsg}\n\nУбедись, что бот — администратор канала.`,
+      `${ce('cross')} Ошибка отложенной задачи #${id}:\n${errMsg}\n\nУбедись, что бот — администратор канала.`,
     ).catch(() => {});
   }
 }
