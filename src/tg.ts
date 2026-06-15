@@ -1,4 +1,5 @@
 import fetch from 'node-fetch';
+import { stripCustomEmoji } from './emoji';
 
 export const BOT_TOKEN = process.env.BOT_TOKEN ?? '';
 
@@ -40,13 +41,28 @@ export async function sendMessage(
   text: string,
   extra: Record<string, unknown> = {},
 ): Promise<void> {
-  await tg('sendMessage', {
-    chat_id: chatId,
-    text,
-    parse_mode: 'HTML',
-    disable_web_page_preview: true,
-    ...extra,
-  });
+  try {
+    await tg('sendMessage', {
+      chat_id: chatId,
+      text,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+      ...extra,
+    });
+  } catch (e) {
+    // Fall back to plain emoji if premium custom emoji can't be sent
+    if (text.includes('<tg-emoji')) {
+      await tg('sendMessage', {
+        chat_id: chatId,
+        text: stripCustomEmoji(text),
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+        ...extra,
+      });
+      return;
+    }
+    throw e;
+  }
 }
 
 export async function sendPhoto(
@@ -55,13 +71,27 @@ export async function sendPhoto(
   caption: string,
   extra: Record<string, unknown> = {},
 ): Promise<void> {
-  await tg('sendPhoto', {
-    chat_id: chatId,
-    photo,
-    caption,
-    parse_mode: 'HTML',
-    ...extra,
-  });
+  try {
+    await tg('sendPhoto', {
+      chat_id: chatId,
+      photo,
+      caption,
+      parse_mode: 'HTML',
+      ...extra,
+    });
+  } catch (e) {
+    if (caption.includes('<tg-emoji')) {
+      await tg('sendPhoto', {
+        chat_id: chatId,
+        photo,
+        caption: stripCustomEmoji(caption),
+        parse_mode: 'HTML',
+        ...extra,
+      });
+      return;
+    }
+    throw e;
+  }
 }
 
 export async function editMarkup(

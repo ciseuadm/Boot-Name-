@@ -15,6 +15,7 @@ exports.initBotInfo = initBotInfo;
 exports.setWebhook = setWebhook;
 exports.setMyCommands = setMyCommands;
 const node_fetch_1 = __importDefault(require("node-fetch"));
+const emoji_1 = require("./emoji");
 exports.BOT_TOKEN = process.env.BOT_TOKEN ?? '';
 // Railway provides RAILWAY_PUBLIC_DOMAIN automatically — no manual WEBHOOK_URL needed
 exports.WEBHOOK_URL = process.env.WEBHOOK_URL ??
@@ -43,22 +44,53 @@ async function tg(method, body) {
 }
 // ─── Message helpers ────────────────────────────────────────────────────────
 async function sendMessage(chatId, text, extra = {}) {
-    await tg('sendMessage', {
-        chat_id: chatId,
-        text,
-        parse_mode: 'HTML',
-        disable_web_page_preview: true,
-        ...extra,
-    });
+    try {
+        await tg('sendMessage', {
+            chat_id: chatId,
+            text,
+            parse_mode: 'HTML',
+            disable_web_page_preview: true,
+            ...extra,
+        });
+    }
+    catch (e) {
+        // Fall back to plain emoji if premium custom emoji can't be sent
+        if (text.includes('<tg-emoji')) {
+            await tg('sendMessage', {
+                chat_id: chatId,
+                text: (0, emoji_1.stripCustomEmoji)(text),
+                parse_mode: 'HTML',
+                disable_web_page_preview: true,
+                ...extra,
+            });
+            return;
+        }
+        throw e;
+    }
 }
 async function sendPhoto(chatId, photo, caption, extra = {}) {
-    await tg('sendPhoto', {
-        chat_id: chatId,
-        photo,
-        caption,
-        parse_mode: 'HTML',
-        ...extra,
-    });
+    try {
+        await tg('sendPhoto', {
+            chat_id: chatId,
+            photo,
+            caption,
+            parse_mode: 'HTML',
+            ...extra,
+        });
+    }
+    catch (e) {
+        if (caption.includes('<tg-emoji')) {
+            await tg('sendPhoto', {
+                chat_id: chatId,
+                photo,
+                caption: (0, emoji_1.stripCustomEmoji)(caption),
+                parse_mode: 'HTML',
+                ...extra,
+            });
+            return;
+        }
+        throw e;
+    }
 }
 async function editMarkup(chatId, messageId, markup) {
     await tg('editMessageReplyMarkup', {

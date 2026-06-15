@@ -1,4 +1,5 @@
 import { sendMessage, sendPhoto, answerCallback, WEBHOOK_URL, TgUpdate, TgMessage } from './tg';
+import { ce } from './emoji';
 import { getOrCreateUser, isPremium } from './db';
 import { BUTTON_FORMAT_HELP, handleAddCommand, handleLinkAdd, handleButtonsInput } from './handlers/add';
 import { handleRemoveCommand, handleLinkRemove } from './handlers/remove';
@@ -61,24 +62,24 @@ function getState(userId: number): UserState {
 // ─── Start message ──────────────────────────────────────────────────────────
 
 // Short, attractive caption shown with the avatar on /start
-const WELCOME = `☑️ <b>Add Button Bot</b>
+const WELCOME = `${ce('check')} <b>Add Button Bot</b>
 
 Добавляю, меняю и удаляю кнопки под любым постом канала — <b>пост остаётся нетронутым</b>.
 
-🔕 Без пометки «изменено» на посте
-🧼 Без рекламных подписей — в отличие от Postbot, который ставит «создано через…» над постом
-⚡ Кнопки появляются за пару секунд
+${ce('check')} Без пометки «изменено» на посте
+${ce('check')} Без рекламных подписей — в отличие от Postbot, который ставит «создано через…» над постом
+${ce('bolt')} Кнопки появляются за пару секунд
 📊 Аналитика кликов · 📋 Шаблоны · ⏰ Отложенный постинг
 
 <b>Старт за 3 шага:</b>
 1️⃣ Добавь меня в админы канала
 2️⃣ Включи право «Редактировать сообщения»
-3️⃣ Жми /add
+3️⃣ Жми /add ${ce('rocket')}
 
 Все команды — /help`;
 
 // Full command reference shown on /help
-const HELP = `☑️  <b>Add Button Bot</b>
+const HELP = `${ce('check')}  <b>Add Button Bot</b>
 
 Добавляю, меняю и удаляю кнопки под постами канала — без пометки «изменено» и без рекламных подписей на постах.
 
@@ -87,8 +88,8 @@ const HELP = `☑️  <b>Add Button Bot</b>
 /add — добавить кнопки к посту
 /remove — удалить кнопки с поста
 /templates — шаблоны кнопок
-/schedule — отложить добавление ⭐
-/stats — аналитика кликов ⭐
+/schedule — отложить добавление ${ce('star')}
+/stats — аналитика кликов ${ce('star')}
 /premium — тариф и подписка
 /ref — реферальная программа
 

@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleUpdate = handleUpdate;
 const tg_1 = require("./tg");
+const emoji_1 = require("./emoji");
 const db_1 = require("./db");
 const add_1 = require("./handlers/add");
 const remove_1 = require("./handlers/remove");
@@ -50,23 +51,23 @@ function getState(userId) {
 }
 // ─── Start message ──────────────────────────────────────────────────────────
 // Short, attractive caption shown with the avatar on /start
-const WELCOME = `☑️ <b>Add Button Bot</b>
+const WELCOME = `${(0, emoji_1.ce)('check')} <b>Add Button Bot</b>
 
 Добавляю, меняю и удаляю кнопки под любым постом канала — <b>пост остаётся нетронутым</b>.
 
-🔕 Без пометки «изменено» на посте
-🧼 Без рекламных подписей — в отличие от Postbot, который ставит «создано через…» над постом
-⚡ Кнопки появляются за пару секунд
+${(0, emoji_1.ce)('check')} Без пометки «изменено» на посте
+${(0, emoji_1.ce)('check')} Без рекламных подписей — в отличие от Postbot, который ставит «создано через…» над постом
+${(0, emoji_1.ce)('bolt')} Кнопки появляются за пару секунд
 📊 Аналитика кликов · 📋 Шаблоны · ⏰ Отложенный постинг
 
 <b>Старт за 3 шага:</b>
 1️⃣ Добавь меня в админы канала
 2️⃣ Включи право «Редактировать сообщения»
-3️⃣ Жми /add
+3️⃣ Жми /add ${(0, emoji_1.ce)('rocket')}
 
 Все команды — /help`;
 // Full command reference shown on /help
-const HELP = `☑️  <b>Add Button Bot</b>
+const HELP = `${(0, emoji_1.ce)('check')}  <b>Add Button Bot</b>
 
 Добавляю, меняю и удаляю кнопки под постами канала — без пометки «изменено» и без рекламных подписей на постах.
 
@@ -75,8 +76,8 @@ const HELP = `☑️  <b>Add Button Bot</b>
 /add — добавить кнопки к посту
 /remove — удалить кнопки с поста
 /templates — шаблоны кнопок
-/schedule — отложить добавление ⭐
-/stats — аналитика кликов ⭐
+/schedule — отложить добавление ${(0, emoji_1.ce)('star')}
+/stats — аналитика кликов ${(0, emoji_1.ce)('star')}
 /premium — тариф и подписка
 /ref — реферальная программа
 
