@@ -37,6 +37,7 @@ exports.handleUpdate = handleUpdate;
 const tg_1 = require("./tg");
 const emoji_1 = require("./emoji");
 const db_1 = require("./db");
+const gate_1 = require("./handlers/gate");
 const add_1 = require("./handlers/add");
 const remove_1 = require("./handlers/remove");
 const templates_1 = require("./handlers/templates");
@@ -101,6 +102,29 @@ async function sendWelcome(chatId, caption) {
     }
     await (0, tg_1.sendMessage)(chatId, caption);
 }
+// Referral codes captured from /start while the user was still behind the gate,
+// applied once they pass the subscription check.
+const pendingRef = new Map();
+/** Runs the /start welcome flow, optionally crediting a referral code. */
+async function startFlow(userId, chatId, firstName, param) {
+    states.set(userId, { step: 'idle' });
+    let isNewRef = false;
+    if (param.startsWith('ref_')) {
+        const code = param.slice(4);
+        const user = await Promise.resolve().then(() => __importStar(require('./db'))).then(m => m.getUser(userId));
+        if (!user?.referred_by) {
+            isNewRef = true;
+            await (0, referral_1.processReferral)(userId, code);
+            const referrer = await Promise.resolve().then(() => __importStar(require('./db'))).then(m => m.getUserByReferralCode(code));
+            if (referrer)
+                await (0, referral_1.notifyReferrer)(referrer.id, firstName);
+        }
+    }
+    const premium = await (0, db_1.isPremium)(userId);
+    const badge = premium ? ` ${(0, emoji_1.ce)('crown')}` : '';
+    const trialNote = isNewRef ? `\n\n${(0, emoji_1.ce)('gift')} Тебе начислен 1 день Premium в подарок!` : '';
+    await sendWelcome(chatId, WELCOME + badge + trialNote);
+}
 // ─── Main update handler ─────────────────────────────────────────────────────
 async function handleUpdate(update) {
     // Pre-checkout
@@ -113,8 +137,24 @@ async function handleUpdate(update) {
         const cq = update.callback_query;
         const userId = cq.from.id;
         const chatId = cq.message?.chat.id ?? userId;
-        await (0, tg_1.answerCallback)(cq.id);
         const data = cq.data ?? '';
+        // Subscription gate: "I subscribed" button
+        if (data === 'check_sub') {
+            const ok = await (0, gate_1.isSubscribed)(userId, true);
+            if (ok) {
+                await (0, tg_1.answerCallback)(cq.id, `${(0, emoji_1.ce)('check')} Доступ открыт!`, true);
+                await (0, db_1.getOrCreateUser)(userId, cq.from.first_name, cq.from.username);
+                const code = pendingRef.get(userId);
+                pendingRef.delete(userId);
+                await startFlow(userId, chatId, cq.from.first_name, code ? `ref_${code}` : '');
+            }
+            else {
+                await (0, tg_1.answerCallback)(cq.id, 'Ты ещё не подписался на канал', true);
+                await (0, gate_1.sendGate)(chatId);
+            }
+            return;
+        }
+        await (0, tg_1.answerCallback)(cq.id);
         if (data === 'buy_monthly')
             await (0, premium_1.handleBuyMonthly)(userId, chatId);
         else if (data === 'buy_yearly')
@@ -136,6 +176,17 @@ async function handleUpdate(update) {
     const raw = (msg.text ?? '').trim();
     if (!raw)
         return;
+    // ── Mandatory subscription gate ──────────────────────────────────────────────
+    if (!tg_1.ADMIN_IDS.includes(userId) && !(await (0, gate_1.isSubscribed)(userId))) {
+        // Remember referral code so it can be credited once they subscribe
+        if (raw.startsWith('/start')) {
+            const p = raw.slice(6).trim();
+            if (p.startsWith('ref_'))
+                pendingRef.set(userId, p.slice(4));
+        }
+        await (0, gate_1.sendGate)(chatId);
+        return;
+    }
     const state = getState(userId);
     // ── /cancel ────────────────────────────────────────────────────────────────
     if (raw === '/cancel') {
@@ -145,25 +196,7 @@ async function handleUpdate(update) {
     }
     // ── /start ─────────────────────────────────────────────────────────────────
     if (raw.startsWith('/start')) {
-        states.set(userId, { step: 'idle' });
-        // Handle referral: /start ref_CODE
-        const param = raw.slice(6).trim();
-        let isNewRef = false;
-        if (param.startsWith('ref_')) {
-            const code = param.slice(4);
-            const user = await Promise.resolve().then(() => __importStar(require('./db'))).then(m => m.getUser(userId));
-            if (!user?.referred_by) {
-                isNewRef = true;
-                await (0, referral_1.processReferral)(userId, code);
-                const referrer = await Promise.resolve().then(() => __importStar(require('./db'))).then(m => m.getUserByReferralCode(code));
-                if (referrer)
-                    await (0, referral_1.notifyReferrer)(referrer.id, msg.from.first_name);
-            }
-        }
-        const premium = await (0, db_1.isPremium)(userId);
-        const badge = premium ? ` ${(0, emoji_1.ce)('crown')}` : '';
-        const trialNote = isNewRef ? `\n\n${(0, emoji_1.ce)('gift')} Тебе начислен 1 день Premium в подарок!` : '';
-        await sendWelcome(chatId, WELCOME + badge + trialNote);
+        await startFlow(userId, chatId, msg.from.first_name, raw.slice(6).trim());
         return;
     }
     // ── /help ──────────────────────────────────────────────────────────────────

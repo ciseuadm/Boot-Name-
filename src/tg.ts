@@ -106,11 +106,27 @@ export async function editMarkup(
   });
 }
 
-export async function answerCallback(callbackQueryId: string, text?: string): Promise<void> {
+export async function answerCallback(
+  callbackQueryId: string,
+  text?: string,
+  showAlert = false,
+): Promise<void> {
   await tg('answerCallbackQuery', {
     callback_query_id: callbackQueryId,
-    ...(text ? { text, show_alert: false } : {}),
+    ...(text ? { text, show_alert: showAlert } : {}),
   });
+}
+
+export interface TgChatMember {
+  status: 'creator' | 'administrator' | 'member' | 'restricted' | 'left' | 'kicked';
+  is_member?: boolean;
+}
+
+export async function getChatMember(
+  chatId: string | number,
+  userId: number,
+): Promise<TgChatMember> {
+  return tg<TgChatMember>('getChatMember', { chat_id: chatId, user_id: userId });
 }
 
 export async function answerPreCheckout(

@@ -9,6 +9,7 @@ exports.sendMessage = sendMessage;
 exports.sendPhoto = sendPhoto;
 exports.editMarkup = editMarkup;
 exports.answerCallback = answerCallback;
+exports.getChatMember = getChatMember;
 exports.answerPreCheckout = answerPreCheckout;
 exports.sendInvoice = sendInvoice;
 exports.initBotInfo = initBotInfo;
@@ -99,11 +100,14 @@ async function editMarkup(chatId, messageId, markup) {
         reply_markup: markup ?? {},
     });
 }
-async function answerCallback(callbackQueryId, text) {
+async function answerCallback(callbackQueryId, text, showAlert = false) {
     await tg('answerCallbackQuery', {
         callback_query_id: callbackQueryId,
-        ...(text ? { text, show_alert: false } : {}),
+        ...(text ? { text, show_alert: showAlert } : {}),
     });
+}
+async function getChatMember(chatId, userId) {
+    return tg('getChatMember', { chat_id: chatId, user_id: userId });
 }
 async function answerPreCheckout(preCheckoutQueryId, ok, errorMessage) {
     await tg('answerPreCheckoutQuery', {

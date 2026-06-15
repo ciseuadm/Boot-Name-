@@ -1,6 +1,7 @@
-import { sendMessage, sendPhoto, answerCallback, WEBHOOK_URL, TgUpdate, TgMessage } from './tg';
+import { sendMessage, sendPhoto, answerCallback, WEBHOOK_URL, ADMIN_IDS, TgUpdate, TgMessage } from './tg';
 import { ce } from './emoji';
 import { getOrCreateUser, isPremium } from './db';
+import { isSubscribed, sendGate } from './handlers/gate';
 import { BUTTON_FORMAT_HELP, handleAddCommand, handleLinkAdd, handleButtonsInput } from './handlers/add';
 import { handleRemoveCommand, handleLinkRemove } from './handlers/remove';
 import {
@@ -115,6 +116,38 @@ async function sendWelcome(chatId: number, caption: string): Promise<void> {
   await sendMessage(chatId, caption);
 }
 
+// Referral codes captured from /start while the user was still behind the gate,
+// applied once they pass the subscription check.
+const pendingRef = new Map<number, string>();
+
+/** Runs the /start welcome flow, optionally crediting a referral code. */
+async function startFlow(
+  userId: number,
+  chatId: number,
+  firstName: string,
+  param: string,
+): Promise<void> {
+  states.set(userId, { step: 'idle' });
+
+  let isNewRef = false;
+  if (param.startsWith('ref_')) {
+    const code = param.slice(4);
+    const user = await import('./db').then(m => m.getUser(userId));
+    if (!user?.referred_by) {
+      isNewRef = true;
+      await processReferral(userId, code);
+      const referrer = await import('./db').then(m => m.getUserByReferralCode(code));
+      if (referrer) await notifyReferrer(referrer.id, firstName);
+    }
+  }
+
+  const premium = await isPremium(userId);
+  const badge = premium ? ` ${ce('crown')}` : '';
+  const trialNote = isNewRef ? `\n\n${ce('gift')} Тебе начислен 1 день Premium в подарок!` : '';
+
+  await sendWelcome(chatId, WELCOME + badge + trialNote);
+}
+
 // ─── Main update handler ─────────────────────────────────────────────────────
 
 export async function handleUpdate(update: TgUpdate): Promise<void> {
@@ -129,9 +162,25 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
     const cq = update.callback_query;
     const userId = cq.from.id;
     const chatId = cq.message?.chat.id ?? userId;
-    await answerCallback(cq.id);
-
     const data = cq.data ?? '';
+
+    // Subscription gate: "I subscribed" button
+    if (data === 'check_sub') {
+      const ok = await isSubscribed(userId, true);
+      if (ok) {
+        await answerCallback(cq.id, `${ce('check')} Доступ открыт!`, true);
+        await getOrCreateUser(userId, cq.from.first_name, cq.from.username);
+        const code = pendingRef.get(userId);
+        pendingRef.delete(userId);
+        await startFlow(userId, chatId, cq.from.first_name, code ? `ref_${code}` : '');
+      } else {
+        await answerCallback(cq.id, 'Ты ещё не подписался на канал', true);
+        await sendGate(chatId);
+      }
+      return;
+    }
+
+    await answerCallback(cq.id);
     if (data === 'buy_monthly') await handleBuyMonthly(userId, chatId);
     else if (data === 'buy_yearly') await handleBuyYearly(userId, chatId);
     return;
@@ -155,6 +204,17 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
   const raw = (msg.text ?? '').trim();
   if (!raw) return;
 
+  // ── Mandatory subscription gate ──────────────────────────────────────────────
+  if (!ADMIN_IDS.includes(userId) && !(await isSubscribed(userId))) {
+    // Remember referral code so it can be credited once they subscribe
+    if (raw.startsWith('/start')) {
+      const p = raw.slice(6).trim();
+      if (p.startsWith('ref_')) pendingRef.set(userId, p.slice(4));
+    }
+    await sendGate(chatId);
+    return;
+  }
+
   const state = getState(userId);
 
   // ── /cancel ────────────────────────────────────────────────────────────────
@@ -166,27 +226,7 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
 
   // ── /start ─────────────────────────────────────────────────────────────────
   if (raw.startsWith('/start')) {
-    states.set(userId, { step: 'idle' });
-
-    // Handle referral: /start ref_CODE
-    const param = raw.slice(6).trim();
-    let isNewRef = false;
-    if (param.startsWith('ref_')) {
-      const code = param.slice(4);
-      const user = await import('./db').then(m => m.getUser(userId));
-      if (!user?.referred_by) {
-        isNewRef = true;
-        await processReferral(userId, code);
-        const referrer = await import('./db').then(m => m.getUserByReferralCode(code));
-        if (referrer) await notifyReferrer(referrer.id, msg.from.first_name);
-      }
-    }
-
-    const premium = await isPremium(userId);
-    const badge = premium ? ` ${ce('crown')}` : '';
-    const trialNote = isNewRef ? `\n\n${ce('gift')} Тебе начислен 1 день Premium в подарок!` : '';
-
-    await sendWelcome(chatId, WELCOME + badge + trialNote);
+    await startFlow(userId, chatId, msg.from.first_name, raw.slice(6).trim());
     return;
   }
 
