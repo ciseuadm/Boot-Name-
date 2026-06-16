@@ -17,7 +17,6 @@ export interface User {
   referral_code: string;
   referred_by: number | null;
   referral_count: number;
-  stats_enabled: boolean;
   created_at: Date;
 }
 
@@ -41,18 +40,6 @@ export interface ScheduledTask {
   error_msg: string | null;
 }
 
-export interface TrackedLink {
-  id: number;
-  short_code: string;
-  user_id: number;
-  original_url: string;
-  button_label: string;
-  post_chat_id: string;
-  post_message_id: number;
-  clicks: number;
-  created_at: Date;
-}
-
 // ─── Schema init ────────────────────────────────────────────────────────────
 
 export async function initDb(): Promise<void> {
@@ -66,7 +53,6 @@ export async function initDb(): Promise<void> {
       referral_code TEXT UNIQUE NOT NULL,
       referred_by BIGINT,
       referral_count INT NOT NULL DEFAULT 0,
-      stats_enabled BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
     `CREATE TABLE IF NOT EXISTS usage_log (
@@ -94,17 +80,6 @@ export async function initDb(): Promise<void> {
       done BOOLEAN NOT NULL DEFAULT FALSE,
       failed BOOLEAN NOT NULL DEFAULT FALSE,
       error_msg TEXT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`,
-    `CREATE TABLE IF NOT EXISTS tracked_links (
-      id SERIAL PRIMARY KEY,
-      short_code TEXT NOT NULL UNIQUE,
-      user_id BIGINT NOT NULL,
-      original_url TEXT NOT NULL,
-      button_label TEXT NOT NULL,
-      post_chat_id TEXT NOT NULL,
-      post_message_id INT NOT NULL,
-      clicks INT NOT NULL DEFAULT 0,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
     `CREATE TABLE IF NOT EXISTS payments (
@@ -221,10 +196,6 @@ export async function recordReferral(newUserId: number, referrerId: number): Pro
   if (count % 3 === 0) {
     await grantPremiumDays(referrerId, 5);
   }
-}
-
-export async function setStatsEnabled(userId: number, enabled: boolean): Promise<void> {
-  await pool.query('UPDATE users SET stats_enabled = $2 WHERE id = $1', [userId, enabled]);
 }
 
 // ─── Usage / limits ─────────────────────────────────────────────────────────
@@ -347,59 +318,6 @@ export async function cancelScheduledTask(id: number, userId: number): Promise<b
   return (result.rowCount ?? 0) > 0;
 }
 
-// ─── Tracked links ──────────────────────────────────────────────────────────
-
-export async function createTrackedLink(
-  userId: number,
-  originalUrl: string,
-  label: string,
-  postChatId: string,
-  postMessageId: number,
-): Promise<string> {
-  const code = crypto.randomBytes(5).toString('base64url');
-  await pool.query(
-    `INSERT INTO tracked_links
-       (short_code, user_id, original_url, button_label, post_chat_id, post_message_id)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [code, userId, originalUrl, label, postChatId, postMessageId],
-  );
-  return code;
-}
-
-export async function getTrackedLink(shortCode: string): Promise<TrackedLink | null> {
-  const { rows } = await pool.query<TrackedLink>(
-    'SELECT * FROM tracked_links WHERE short_code = $1',
-    [shortCode],
-  );
-  return rows[0] ?? null;
-}
-
-export async function incrementClick(shortCode: string): Promise<void> {
-  await pool.query('UPDATE tracked_links SET clicks = clicks + 1 WHERE short_code = $1', [shortCode]);
-}
-
-export async function getPostStats(
-  userId: number,
-  postChatId: string,
-  postMessageId: number,
-): Promise<TrackedLink[]> {
-  const { rows } = await pool.query<TrackedLink>(
-    `SELECT * FROM tracked_links
-     WHERE user_id = $1 AND post_chat_id = $2 AND post_message_id = $3
-     ORDER BY clicks DESC`,
-    [userId, postChatId, postMessageId],
-  );
-  return rows;
-}
-
-export async function getUserTrackedLinks(userId: number): Promise<TrackedLink[]> {
-  const { rows } = await pool.query<TrackedLink>(
-    `SELECT * FROM tracked_links WHERE user_id = $1 ORDER BY created_at DESC LIMIT 30`,
-    [userId],
-  );
-  return rows;
-}
-
 // ─── Payments ───────────────────────────────────────────────────────────────
 
 export async function recordPayment(
@@ -426,9 +344,8 @@ export async function getAdminStats(): Promise<{
   totalTemplates: number;
   pendingTasks: number;
   totalPayments: number;
-  totalClicks: number;
 }> {
-  const [users, premium, dau, templates, tasks, payments, clicks] = await Promise.all([
+  const [users, premium, dau, templates, tasks, payments] = await Promise.all([
     pool.query<{ count: string }>('SELECT COUNT(*) FROM users'),
     pool.query<{ count: string }>(
       "SELECT COUNT(*) FROM users WHERE plan = 'premium' AND (premium_until IS NULL OR premium_until > NOW())",
@@ -441,7 +358,6 @@ export async function getAdminStats(): Promise<{
       'SELECT COUNT(*) FROM scheduled_tasks WHERE done = FALSE AND failed = FALSE',
     ),
     pool.query<{ count: string }>('SELECT COUNT(*) FROM payments'),
-    pool.query<{ sum: string }>('SELECT COALESCE(SUM(clicks), 0) AS sum FROM tracked_links'),
   ]);
 
   return {
@@ -451,7 +367,6 @@ export async function getAdminStats(): Promise<{
     totalTemplates: parseInt(templates.rows[0]?.count ?? '0', 10),
     pendingTasks: parseInt(tasks.rows[0]?.count ?? '0', 10),
     totalPayments: parseInt(payments.rows[0]?.count ?? '0', 10),
-    totalClicks: parseInt(clicks.rows[0]?.sum ?? '0', 10),
   };
 }
 

@@ -27,7 +27,7 @@ async function handlePremiumCommand(userId, chatId) {
     const freeNote = premium
         ? ''
         : `\n<b>Free:</b> ${db_1.FREE_DAILY_LIMIT} постов/сутки · ${db_1.FREE_MAX_BUTTONS} кнопок · ${db_1.FREE_MAX_TEMPLATES} шаблона\n` +
-            `<b>Premium:</b> безлимит · ${db_1.PREMIUM_MAX_BUTTONS} кнопок · ${db_1.PREMIUM_MAX_TEMPLATES} шаблонов · отложенные кнопки · аналитика кликов\n`;
+            `<b>Premium:</b> безлимит · ${db_1.PREMIUM_MAX_BUTTONS} кнопок · ${db_1.PREMIUM_MAX_TEMPLATES} шаблонов · отложенные кнопки\n`;
     await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('gem')} <b>Add Button Premium</b>\n\n${statusLine}\n${freeNote}\n` +
         `Оплата — Telegram Stars (покупаются прямо в Telegram):\n\n` +
         `${(0, emoji_1.ce)('star')} /buy_monthly — <b>${exports.PLANS.monthly.stars} Stars / месяц</b>\n` +
@@ -43,7 +43,7 @@ async function handleBuyYearly(userId, chatId) {
 }
 async function sendPlanInvoice(chatId, userId, planKey) {
     const plan = exports.PLANS[planKey];
-    await (0, tg_1.sendInvoice)(chatId, `Add Button Premium — ${plan.label}`, `Безлимитные кнопки, шаблоны, отложенные задачи и аналитика кликов на ${plan.label}.`, `${plan.key}_${userId}`, `Premium ${plan.label}`, plan.stars);
+    await (0, tg_1.sendInvoice)(chatId, `Add Button Premium — ${plan.label}`, `Безлимитные кнопки, шаблоны и отложенные задачи на ${plan.label}.`, `${plan.key}_${userId}`, `Premium ${plan.label}`, plan.stars);
 }
 // ── Pre-checkout handler ──────────────────────────────────────────────────────
 async function handlePreCheckout(query) {
@@ -87,7 +87,6 @@ async function handleSuccessfulPayment(msg) {
         `• Безлимитные применения кнопок\n` +
         `• До ${db_1.PREMIUM_MAX_BUTTONS} кнопок на пост\n` +
         `• До ${db_1.PREMIUM_MAX_TEMPLATES} шаблонов\n` +
-        `• Отложенные кнопки: /schedule\n` +
-        `• Аналитика кликов: /stats on\n\n` +
+        `• Отложенные кнопки: /schedule\n\n` +
         `Спасибо за поддержку! ${(0, emoji_1.ce)('gem')}`);
 }

@@ -149,7 +149,6 @@ async function setMyCommands() {
             { command: 'remove', description: 'Удалить кнопки с поста' },
             { command: 'templates', description: 'Мои шаблоны кнопок' },
             { command: 'schedule', description: 'Отложить добавление кнопок' },
-            { command: 'stats', description: 'Аналитика кликов по кнопкам' },
             { command: 'premium', description: 'Тариф и подписка' },
             { command: 'ref', description: 'Реферальная программа' },
             { command: 'help', description: 'Помощь' },

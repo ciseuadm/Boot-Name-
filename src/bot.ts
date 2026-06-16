@@ -30,7 +30,6 @@ import {
   handleScheduleButtons,
   handleScheduleTime,
 } from './handlers/schedule';
-import { handleStatsCommand, handlePostStats } from './handlers/stats';
 import {
   handleAdminCommand,
   handleGrantPremium,
@@ -43,7 +42,7 @@ import {
 export type UserState =
   | { step: 'idle' }
   | { step: 'waiting_link_add' }
-  | { step: 'waiting_buttons'; chatId: string | number; messageId: number; tracking: boolean }
+  | { step: 'waiting_buttons'; chatId: string | number; messageId: number }
   | { step: 'waiting_link_remove' }
   | { step: 'waiting_template_name_save' }
   | { step: 'waiting_template_buttons_save'; name: string }
@@ -71,7 +70,7 @@ ${ce('ninja')} Без пометки «изменено» — пост не ме
 ${ce('noentry')} Без рекламных подписей, как у Postbot
 ${ce('star')} С премиум-эмодзи в постах
 ${ce('bolt')} Кнопки появляются за пару секунд
-${ce('chart')} Аналитика кликов · ${ce('alarm')} отложенный постинг
+${ce('alarm')} Отложенный постинг — кнопки появятся в нужное время
 
 <b>Старт за 3 шага:</b>
 ${ce('num1')} Добавь меня в админы канала
@@ -91,11 +90,10 @@ ${ce('plus')} /add — добавить кнопки к посту
 ${ce('trash')} /remove — удалить кнопки с поста
 ${ce('dividers')} /templates — шаблоны кнопок
 ${ce('alarm')} /schedule — отложить добавление
-${ce('chartup')} /stats — аналитика кликов
 ${ce('gem')} /premium — тариф и подписка
 ${ce('handshake')} /ref — реферальная программа
 
-${ce('star')} /schedule и /stats доступны в Premium
+${ce('star')} /schedule доступен в Premium
 
 <b>${ce('bulb')} Как начать:</b>
 
@@ -321,18 +319,6 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
 
   if (raw.startsWith('/cancel_task')) {
     await handleCancelTask(userId, chatId, raw.slice(12).trim());
-    return;
-  }
-
-  // ── /stats ─────────────────────────────────────────────────────────────────
-  if (raw.startsWith('/stats')) {
-    const arg = raw.slice(6).trim();
-    // If arg looks like a post link
-    if (arg.includes('t.me/')) {
-      await handlePostStats(userId, chatId, arg);
-    } else {
-      await handleStatsCommand(userId, chatId, arg);
-    }
     return;
   }
 

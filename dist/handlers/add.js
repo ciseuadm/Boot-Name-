@@ -87,7 +87,6 @@ async function handleLinkAdd(userId, chatId, text, states) {
         step: 'waiting_buttons',
         chatId: parsed.chatId,
         messageId: parsed.messageId,
-        tracking: premium,
     });
     const limitNote = premium
         ? `до ${db_1.PREMIUM_MAX_BUTTONS} кнопок`

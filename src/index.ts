@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
-import { BOT_TOKEN, WEBHOOK_URL, initBotInfo, setWebhook, setMyCommands, TgUpdate } from './tg';
-import { initDb, getTrackedLink, incrementClick } from './db';
+import { BOT_TOKEN, initBotInfo, setWebhook, setMyCommands, TgUpdate } from './tg';
+import { initDb } from './db';
 import { handleUpdate } from './bot';
 import { startScheduler } from './scheduler';
 
@@ -25,22 +25,6 @@ app.get('/banner.png', (_req, res) => {
 app.post(`/webhook/${BOT_TOKEN}`, (req, res) => {
   res.sendStatus(200);
   handleUpdate(req.body as TgUpdate).catch(e => console.error('Update error:', e));
-});
-
-// ── Click tracking redirect ───────────────────────────────────────────────────
-
-app.get('/r/:code', async (req, res) => {
-  try {
-    const link = await getTrackedLink(req.params.code!);
-    if (!link) {
-      res.status(404).send('Not found');
-      return;
-    }
-    incrementClick(link.short_code).catch(() => {});
-    res.redirect(302, link.original_url);
-  } catch {
-    res.status(500).send('Error');
-  }
 });
 
 // ── Health check ──────────────────────────────────────────────────────────────

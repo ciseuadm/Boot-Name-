@@ -21,8 +21,7 @@ async function handleAdminCommand(userId, chatId) {
         `${(0, emoji_1.ce)('bolt')} DAU (24ч): <b>${s.dau}</b>\n` +
         `${(0, emoji_1.ce)('dividers')} Шаблонов: <b>${s.totalTemplates}</b>\n` +
         `${(0, emoji_1.ce)('alarm')} Задач в очереди: <b>${s.pendingTasks}</b>\n` +
-        `${(0, emoji_1.ce)('money')} Оплат: <b>${s.totalPayments}</b>\n` +
-        `${(0, emoji_1.ce)('chart')} Всего кликов: <b>${s.totalClicks}</b>\n\n` +
+        `${(0, emoji_1.ce)('money')} Оплат: <b>${s.totalPayments}</b>\n\n` +
         `<b>Команды:</b>\n` +
         `/grant_premium USER_ID MONTHS\n` +
         `/broadcast ТЕКСТ`);

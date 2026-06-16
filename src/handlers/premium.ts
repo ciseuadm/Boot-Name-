@@ -25,7 +25,7 @@ export async function handlePremiumCommand(userId: number, chatId: number): Prom
   const freeNote = premium
     ? ''
     : `\n<b>Free:</b> ${FREE_DAILY_LIMIT} постов/сутки · ${FREE_MAX_BUTTONS} кнопок · ${FREE_MAX_TEMPLATES} шаблона\n` +
-      `<b>Premium:</b> безлимит · ${PREMIUM_MAX_BUTTONS} кнопок · ${PREMIUM_MAX_TEMPLATES} шаблонов · отложенные кнопки · аналитика кликов\n`;
+      `<b>Premium:</b> безлимит · ${PREMIUM_MAX_BUTTONS} кнопок · ${PREMIUM_MAX_TEMPLATES} шаблонов · отложенные кнопки\n`;
 
   await sendMessage(
     chatId,
@@ -56,7 +56,7 @@ async function sendPlanInvoice(
   await sendInvoice(
     chatId,
     `Add Button Premium — ${plan.label}`,
-    `Безлимитные кнопки, шаблоны, отложенные задачи и аналитика кликов на ${plan.label}.`,
+    `Безлимитные кнопки, шаблоны и отложенные задачи на ${plan.label}.`,
     `${plan.key}_${userId}`,
     `Premium ${plan.label}`,
     plan.stars,
@@ -122,8 +122,7 @@ export async function handleSuccessfulPayment(msg: TgMessage): Promise<void> {
       `• Безлимитные применения кнопок\n` +
       `• До ${PREMIUM_MAX_BUTTONS} кнопок на пост\n` +
       `• До ${PREMIUM_MAX_TEMPLATES} шаблонов\n` +
-      `• Отложенные кнопки: /schedule\n` +
-      `• Аналитика кликов: /stats on\n\n` +
+      `• Отложенные кнопки: /schedule\n\n` +
       `Спасибо за поддержку! ${ce('gem')}`,
   );
 }

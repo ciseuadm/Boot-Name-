@@ -12,7 +12,6 @@ exports.grantPremium = grantPremium;
 exports.getUserByReferralCode = getUserByReferralCode;
 exports.grantPremiumDays = grantPremiumDays;
 exports.recordReferral = recordReferral;
-exports.setStatsEnabled = setStatsEnabled;
 exports.logUsage = logUsage;
 exports.getDailyUsage = getDailyUsage;
 exports.countTemplates = countTemplates;
@@ -26,11 +25,6 @@ exports.markTaskDone = markTaskDone;
 exports.markTaskFailed = markTaskFailed;
 exports.getUserScheduledTasks = getUserScheduledTasks;
 exports.cancelScheduledTask = cancelScheduledTask;
-exports.createTrackedLink = createTrackedLink;
-exports.getTrackedLink = getTrackedLink;
-exports.incrementClick = incrementClick;
-exports.getPostStats = getPostStats;
-exports.getUserTrackedLinks = getUserTrackedLinks;
 exports.recordPayment = recordPayment;
 exports.getAdminStats = getAdminStats;
 exports.getAllUserIds = getAllUserIds;
@@ -52,7 +46,6 @@ async function initDb() {
       referral_code TEXT UNIQUE NOT NULL,
       referred_by BIGINT,
       referral_count INT NOT NULL DEFAULT 0,
-      stats_enabled BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
         `CREATE TABLE IF NOT EXISTS usage_log (
@@ -80,17 +73,6 @@ async function initDb() {
       done BOOLEAN NOT NULL DEFAULT FALSE,
       failed BOOLEAN NOT NULL DEFAULT FALSE,
       error_msg TEXT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`,
-        `CREATE TABLE IF NOT EXISTS tracked_links (
-      id SERIAL PRIMARY KEY,
-      short_code TEXT NOT NULL UNIQUE,
-      user_id BIGINT NOT NULL,
-      original_url TEXT NOT NULL,
-      button_label TEXT NOT NULL,
-      post_chat_id TEXT NOT NULL,
-      post_message_id INT NOT NULL,
-      clicks INT NOT NULL DEFAULT 0,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
         `CREATE TABLE IF NOT EXISTS payments (
@@ -174,9 +156,6 @@ async function recordReferral(newUserId, referrerId) {
         await grantPremiumDays(referrerId, 5);
     }
 }
-async function setStatsEnabled(userId, enabled) {
-    await exports.pool.query('UPDATE users SET stats_enabled = $2 WHERE id = $1', [userId, enabled]);
-}
 // ─── Usage / limits ─────────────────────────────────────────────────────────
 exports.FREE_DAILY_LIMIT = 5;
 exports.FREE_MAX_BUTTONS = 6;
@@ -238,31 +217,6 @@ async function cancelScheduledTask(id, userId) {
     const result = await exports.pool.query('DELETE FROM scheduled_tasks WHERE id = $1 AND user_id = $2 AND done = FALSE AND failed = FALSE', [id, userId]);
     return (result.rowCount ?? 0) > 0;
 }
-// ─── Tracked links ──────────────────────────────────────────────────────────
-async function createTrackedLink(userId, originalUrl, label, postChatId, postMessageId) {
-    const code = crypto_1.default.randomBytes(5).toString('base64url');
-    await exports.pool.query(`INSERT INTO tracked_links
-       (short_code, user_id, original_url, button_label, post_chat_id, post_message_id)
-     VALUES ($1, $2, $3, $4, $5, $6)`, [code, userId, originalUrl, label, postChatId, postMessageId]);
-    return code;
-}
-async function getTrackedLink(shortCode) {
-    const { rows } = await exports.pool.query('SELECT * FROM tracked_links WHERE short_code = $1', [shortCode]);
-    return rows[0] ?? null;
-}
-async function incrementClick(shortCode) {
-    await exports.pool.query('UPDATE tracked_links SET clicks = clicks + 1 WHERE short_code = $1', [shortCode]);
-}
-async function getPostStats(userId, postChatId, postMessageId) {
-    const { rows } = await exports.pool.query(`SELECT * FROM tracked_links
-     WHERE user_id = $1 AND post_chat_id = $2 AND post_message_id = $3
-     ORDER BY clicks DESC`, [userId, postChatId, postMessageId]);
-    return rows;
-}
-async function getUserTrackedLinks(userId) {
-    const { rows } = await exports.pool.query(`SELECT * FROM tracked_links WHERE user_id = $1 ORDER BY created_at DESC LIMIT 30`, [userId]);
-    return rows;
-}
 // ─── Payments ───────────────────────────────────────────────────────────────
 async function recordPayment(userId, chargeId, stars, planKey, months) {
     await exports.pool.query(`INSERT INTO payments (user_id, telegram_charge_id, stars_amount, plan_key, months)
@@ -271,14 +225,13 @@ async function recordPayment(userId, chargeId, stars, planKey, months) {
 }
 // ─── Admin stats ────────────────────────────────────────────────────────────
 async function getAdminStats() {
-    const [users, premium, dau, templates, tasks, payments, clicks] = await Promise.all([
+    const [users, premium, dau, templates, tasks, payments] = await Promise.all([
         exports.pool.query('SELECT COUNT(*) FROM users'),
         exports.pool.query("SELECT COUNT(*) FROM users WHERE plan = 'premium' AND (premium_until IS NULL OR premium_until > NOW())"),
         exports.pool.query(`SELECT COUNT(DISTINCT user_id) FROM usage_log WHERE created_at > NOW() - INTERVAL '24 hours'`),
         exports.pool.query('SELECT COUNT(*) FROM templates'),
         exports.pool.query('SELECT COUNT(*) FROM scheduled_tasks WHERE done = FALSE AND failed = FALSE'),
         exports.pool.query('SELECT COUNT(*) FROM payments'),
-        exports.pool.query('SELECT COALESCE(SUM(clicks), 0) AS sum FROM tracked_links'),
     ]);
     return {
         totalUsers: parseInt(users.rows[0]?.count ?? '0', 10),
@@ -287,7 +240,6 @@ async function getAdminStats() {
         totalTemplates: parseInt(templates.rows[0]?.count ?? '0', 10),
         pendingTasks: parseInt(tasks.rows[0]?.count ?? '0', 10),
         totalPayments: parseInt(payments.rows[0]?.count ?? '0', 10),
-        totalClicks: parseInt(clicks.rows[0]?.sum ?? '0', 10),
     };
 }
 async function getAllUserIds() {

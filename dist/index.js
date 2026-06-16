@@ -24,21 +24,6 @@ app.post(`/webhook/${tg_1.BOT_TOKEN}`, (req, res) => {
     res.sendStatus(200);
     (0, bot_1.handleUpdate)(req.body).catch(e => console.error('Update error:', e));
 });
-// ── Click tracking redirect ───────────────────────────────────────────────────
-app.get('/r/:code', async (req, res) => {
-    try {
-        const link = await (0, db_1.getTrackedLink)(req.params.code);
-        if (!link) {
-            res.status(404).send('Not found');
-            return;
-        }
-        (0, db_1.incrementClick)(link.short_code).catch(() => { });
-        res.redirect(302, link.original_url);
-    }
-    catch {
-        res.status(500).send('Error');
-    }
-});
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ ok: true }));
 // ── Boot ──────────────────────────────────────────────────────────────────────

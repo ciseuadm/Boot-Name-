@@ -81,7 +81,6 @@ export async function handleLinkAdd(
     step: 'waiting_buttons',
     chatId: parsed.chatId,
     messageId: parsed.messageId,
-    tracking: premium,
   });
 
   const limitNote = premium

@@ -21,8 +21,7 @@ export async function handleAdminCommand(userId: number, chatId: number): Promis
       `${ce('bolt')} DAU (24ч): <b>${s.dau}</b>\n` +
       `${ce('dividers')} Шаблонов: <b>${s.totalTemplates}</b>\n` +
       `${ce('alarm')} Задач в очереди: <b>${s.pendingTasks}</b>\n` +
-      `${ce('money')} Оплат: <b>${s.totalPayments}</b>\n` +
-      `${ce('chart')} Всего кликов: <b>${s.totalClicks}</b>\n\n` +
+      `${ce('money')} Оплат: <b>${s.totalPayments}</b>\n\n` +
       `<b>Команды:</b>\n` +
       `/grant_premium USER_ID MONTHS\n` +
       `/broadcast ТЕКСТ`,
