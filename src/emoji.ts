@@ -53,9 +53,9 @@ const E = {
   spark:     { id: '5800759688693816045', cp: 0x1F389 },         // 🎉 clean / celebrate
   target:    { id: '5784936865966594550', cp: 0x1F51D },         // 🔝 goal / top
   // Keycap step numbers
-  num1:      { id: '5787546793038321619', alt: '1\uFE0F\u20E3' }, // 1️⃣
-  num2:      { id: '5785314148778777346', alt: '2\uFE0F\u20E3' }, // 2️⃣
-  num3:      { id: '5787253824729126735', alt: '3\uFE0F\u20E3' }, // 3️⃣
+  num1:      { id: '5843579443188078460', alt: '1\uFE0F\u20E3' }, // 1️⃣
+  num2:      { id: '5841444870211770718', alt: '2\uFE0F\u20E3' }, // 2️⃣
+  num3:      { id: '5841682377608274581', alt: '3\uFE0F\u20E3' }, // 3️⃣
 } as const;
 
 export type EmojiName = keyof typeof E;
