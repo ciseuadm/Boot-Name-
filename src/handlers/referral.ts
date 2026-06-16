@@ -46,7 +46,11 @@ export async function notifyReferrer(referrerId: number, newUserId: number): Pro
   const { sendMessage: send } = await import('../tg');
   const count = referrer.referral_count;
   const bonusMsg = count % 3 === 0 ? `\n${ce('fire')} Бонус: <b>+5 дней Premium</b> за 3 реферала!` : '';
-  const userLink = `<a href="tg://user?id=${newUserId}">новый</a>`;
+  const newUser = await getUser(newUserId);
+  const href = newUser?.username
+    ? `https://t.me/${newUser.username}`
+    : `tg://user?id=${newUserId}`;
+  const userLink = `<a href="${href}">новый</a>`;
 
   await send(
     referrerId,

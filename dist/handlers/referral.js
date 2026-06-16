@@ -77,7 +77,11 @@ async function notifyReferrer(referrerId, newUserId) {
     const { sendMessage: send } = await Promise.resolve().then(() => __importStar(require('../tg')));
     const count = referrer.referral_count;
     const bonusMsg = count % 3 === 0 ? `\n${(0, emoji_1.ce)('fire')} Бонус: <b>+5 дней Premium</b> за 3 реферала!` : '';
-    const userLink = `<a href="tg://user?id=${newUserId}">новый</a>`;
+    const newUser = await (0, db_1.getUser)(newUserId);
+    const href = newUser?.username
+        ? `https://t.me/${newUser.username}`
+        : `tg://user?id=${newUserId}`;
+    const userLink = `<a href="${href}">новый</a>`;
     await send(referrerId, `${(0, emoji_1.ce)('gift')} По твоей реферальной ссылке зарегистрировался ${userLink} пользователь!\n` +
         `Ты получил <b>+1 день Premium</b>.${bonusMsg}\n\n` +
         `Всего рефералов: ${count}`).catch(() => { });
