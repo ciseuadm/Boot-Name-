@@ -168,7 +168,7 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
     if (data === 'check_sub') {
       const ok = await isSubscribed(userId, true);
       if (ok) {
-        await answerCallback(cq.id, `${ce('check')} Доступ открыт!`, true);
+        await answerCallback(cq.id);
         await getOrCreateUser(userId, cq.from.first_name, cq.from.username);
         const code = pendingRef.get(userId);
         pendingRef.delete(userId);
@@ -202,6 +202,18 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
   }
 
   const raw = (msg.text ?? '').trim();
+
+  // ── Admin: dump custom_emoji_id of any premium emoji in the message ──────────
+  if (ADMIN_IDS.includes(userId)) {
+    const ids = (msg.entities ?? [])
+      .filter(e => e.type === 'custom_emoji' && e.custom_emoji_id)
+      .map((e, i) => `${i + 1}. <code>${e.custom_emoji_id}</code> ${(msg.text ?? '').slice(e.offset, e.offset + e.length)}`);
+    if (ids.length) {
+      await sendMessage(chatId, `${ce('book')} custom_emoji_id:\n${ids.join('\n')}`);
+      return;
+    }
+  }
+
   if (!raw) return;
 
   // ── Mandatory subscription gate ──────────────────────────────────────────────

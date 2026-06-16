@@ -202,11 +202,19 @@ export interface TgUser {
   username?: string;
 }
 
+export interface TgMessageEntity {
+  type: string;
+  offset: number;
+  length: number;
+  custom_emoji_id?: string;
+}
+
 export interface TgMessage {
   message_id: number;
   from?: TgUser;
   chat: { id: number };
   text?: string;
+  entities?: TgMessageEntity[];
   successful_payment?: {
     currency: string;
     total_amount: number;
