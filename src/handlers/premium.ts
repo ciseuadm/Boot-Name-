@@ -15,25 +15,36 @@ export async function handlePremiumCommand(userId: number, chatId: number): Prom
   const user = await getUser(userId);
   const premium = await isPremium(userId);
 
-  const statusLine = premium
-    ? `${ce('crown')} <b>Premium активен</b>` +
-      (user?.premium_until
-        ? ` до ${new Date(user.premium_until).toLocaleDateString('ru-RU')}`
-        : ' (бессрочно)')
-    : `Тариф: <b>Free</b>`;
+  const benefits =
+    `${ce('gem')} <b>Add Button Premium</b>\n\n` +
+    `Зачем он нужен и чем лучше бесплатной версии:\n\n` +
+    `${ce('bolt')} <b>Без лимитов.</b> Добавляй кнопки к любому числу постов в день — на Free только ${FREE_DAILY_LIMIT} в сутки.\n` +
+    `${ce('puzzle')} <b>Больше кнопок.</b> До ${PREMIUM_MAX_BUTTONS} кнопок под постом вместо ${FREE_MAX_BUTTONS} — целые меню и сетки.\n` +
+    `${ce('dividers')} <b>Больше шаблонов.</b> До ${PREMIUM_MAX_TEMPLATES} сохранённых наборов кнопок вместо ${FREE_MAX_TEMPLATES} — оформляй посты в один клик.\n` +
+    `${ce('alarm')} <b>Отложенные кнопки.</b> Запланируй появление кнопок на нужное время — /schedule (только в Premium).\n` +
+    `${ce('rocket')} <b>Приоритет.</b> Поддержка новых возможностей в первую очередь.\n`;
 
-  const freeNote = premium
-    ? ''
-    : `\n<b>Free:</b> ${FREE_DAILY_LIMIT} постов/сутки · ${FREE_MAX_BUTTONS} кнопок · ${FREE_MAX_TEMPLATES} шаблона\n` +
-      `<b>Premium:</b> безлимит · ${PREMIUM_MAX_BUTTONS} кнопок · ${PREMIUM_MAX_TEMPLATES} шаблонов · отложенные кнопки\n`;
+  if (premium) {
+    const until = user?.premium_until
+      ? ` до <b>${new Date(user.premium_until).toLocaleDateString('ru-RU')}</b>`
+      : ' (бессрочно)';
+    await sendMessage(
+      chatId,
+      benefits +
+        `\n${ce('crown')} <b>Premium активен</b>${until} — все возможности уже у тебя.\n\n` +
+        `${ce('handshake')} Продлить бесплатно можно через рефералов: /ref`,
+    );
+    return;
+  }
 
   await sendMessage(
     chatId,
-    `${ce('gem')} <b>Add Button Premium</b>\n\n${statusLine}\n${freeNote}\n` +
-      `Оплата — Telegram Stars (покупаются прямо в Telegram):\n\n` +
+    benefits +
+      `\n${ce('star')} <b>Сейчас у тебя Free</b> — ${FREE_DAILY_LIMIT} постов/сутки, до ${FREE_MAX_BUTTONS} кнопок, ${FREE_MAX_TEMPLATES} шаблона.\n\n` +
+      `<b>Подключить Premium</b> (оплата Telegram Stars, прямо в Telegram):\n` +
       `${ce('star')} /buy_monthly — <b>${PLANS.monthly.stars} Stars / месяц</b>\n` +
       `${ce('fire')} /buy_yearly — <b>${PLANS.yearly.stars} Stars / год</b> (экономия 45%)\n\n` +
-      `${ce('handshake')} Реферальная программа — бесплатный Premium: /ref`,
+      `${ce('handshake')} Или получи Premium бесплатно за приглашённых друзей: /ref`,
   );
 }
 

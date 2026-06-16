@@ -18,21 +18,28 @@ exports.PLANS = {
 async function handlePremiumCommand(userId, chatId) {
     const user = await (0, db_1.getUser)(userId);
     const premium = await (0, db_1.isPremium)(userId);
-    const statusLine = premium
-        ? `${(0, emoji_1.ce)('crown')} <b>Premium активен</b>` +
-            (user?.premium_until
-                ? ` до ${new Date(user.premium_until).toLocaleDateString('ru-RU')}`
-                : ' (бессрочно)')
-        : `Тариф: <b>Free</b>`;
-    const freeNote = premium
-        ? ''
-        : `\n<b>Free:</b> ${db_1.FREE_DAILY_LIMIT} постов/сутки · ${db_1.FREE_MAX_BUTTONS} кнопок · ${db_1.FREE_MAX_TEMPLATES} шаблона\n` +
-            `<b>Premium:</b> безлимит · ${db_1.PREMIUM_MAX_BUTTONS} кнопок · ${db_1.PREMIUM_MAX_TEMPLATES} шаблонов · отложенные кнопки\n`;
-    await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('gem')} <b>Add Button Premium</b>\n\n${statusLine}\n${freeNote}\n` +
-        `Оплата — Telegram Stars (покупаются прямо в Telegram):\n\n` +
+    const benefits = `${(0, emoji_1.ce)('gem')} <b>Add Button Premium</b>\n\n` +
+        `Зачем он нужен и чем лучше бесплатной версии:\n\n` +
+        `${(0, emoji_1.ce)('bolt')} <b>Без лимитов.</b> Добавляй кнопки к любому числу постов в день — на Free только ${db_1.FREE_DAILY_LIMIT} в сутки.\n` +
+        `${(0, emoji_1.ce)('puzzle')} <b>Больше кнопок.</b> До ${db_1.PREMIUM_MAX_BUTTONS} кнопок под постом вместо ${db_1.FREE_MAX_BUTTONS} — целые меню и сетки.\n` +
+        `${(0, emoji_1.ce)('dividers')} <b>Больше шаблонов.</b> До ${db_1.PREMIUM_MAX_TEMPLATES} сохранённых наборов кнопок вместо ${db_1.FREE_MAX_TEMPLATES} — оформляй посты в один клик.\n` +
+        `${(0, emoji_1.ce)('alarm')} <b>Отложенные кнопки.</b> Запланируй появление кнопок на нужное время — /schedule (только в Premium).\n` +
+        `${(0, emoji_1.ce)('rocket')} <b>Приоритет.</b> Поддержка новых возможностей в первую очередь.\n`;
+    if (premium) {
+        const until = user?.premium_until
+            ? ` до <b>${new Date(user.premium_until).toLocaleDateString('ru-RU')}</b>`
+            : ' (бессрочно)';
+        await (0, tg_1.sendMessage)(chatId, benefits +
+            `\n${(0, emoji_1.ce)('crown')} <b>Premium активен</b>${until} — все возможности уже у тебя.\n\n` +
+            `${(0, emoji_1.ce)('handshake')} Продлить бесплатно можно через рефералов: /ref`);
+        return;
+    }
+    await (0, tg_1.sendMessage)(chatId, benefits +
+        `\n${(0, emoji_1.ce)('star')} <b>Сейчас у тебя Free</b> — ${db_1.FREE_DAILY_LIMIT} постов/сутки, до ${db_1.FREE_MAX_BUTTONS} кнопок, ${db_1.FREE_MAX_TEMPLATES} шаблона.\n\n` +
+        `<b>Подключить Premium</b> (оплата Telegram Stars, прямо в Telegram):\n` +
         `${(0, emoji_1.ce)('star')} /buy_monthly — <b>${exports.PLANS.monthly.stars} Stars / месяц</b>\n` +
         `${(0, emoji_1.ce)('fire')} /buy_yearly — <b>${exports.PLANS.yearly.stars} Stars / год</b> (экономия 45%)\n\n` +
-        `${(0, emoji_1.ce)('handshake')} Реферальная программа — бесплатный Premium: /ref`);
+        `${(0, emoji_1.ce)('handshake')} Или получи Premium бесплатно за приглашённых друзей: /ref`);
 }
 // ── /buy_monthly / /buy_yearly ────────────────────────────────────────────────
 async function handleBuyMonthly(userId, chatId) {
