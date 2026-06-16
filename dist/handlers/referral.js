@@ -70,14 +70,15 @@ async function handleRefCommand(userId, chatId) {
         (premium ? '' : `\n${(0, emoji_1.ce)('bulb')} Начни делиться ссылкой прямо сейчас!`));
 }
 // Called after successful referral — notify referrer
-async function notifyReferrer(referrerId, newUserName) {
+async function notifyReferrer(referrerId, newUserId) {
     const referrer = await (0, db_1.getUser)(referrerId);
     if (!referrer)
         return;
     const { sendMessage: send } = await Promise.resolve().then(() => __importStar(require('../tg')));
     const count = referrer.referral_count;
     const bonusMsg = count % 3 === 0 ? `\n${(0, emoji_1.ce)('fire')} Бонус: <b>+5 дней Premium</b> за 3 реферала!` : '';
-    await send(referrerId, `${(0, emoji_1.ce)('gift')} По твоей реферальной ссылке зарегистрировался новый пользователь!\n` +
+    const userLink = `<a href="tg://user?id=${newUserId}">новый</a>`;
+    await send(referrerId, `${(0, emoji_1.ce)('gift')} По твоей реферальной ссылке зарегистрировался ${userLink} пользователь!\n` +
         `Ты получил <b>+1 день Premium</b>.${bonusMsg}\n\n` +
         `Всего рефералов: ${count}`).catch(() => { });
 }

@@ -138,7 +138,7 @@ async function startFlow(
       isNewRef = true;
       await processReferral(userId, code);
       const referrer = await import('./db').then(m => m.getUserByReferralCode(code));
-      if (referrer) await notifyReferrer(referrer.id, firstName);
+      if (referrer) await notifyReferrer(referrer.id, userId);
     }
   }
 

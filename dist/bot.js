@@ -118,7 +118,7 @@ async function startFlow(userId, chatId, firstName, param) {
             await (0, referral_1.processReferral)(userId, code);
             const referrer = await Promise.resolve().then(() => __importStar(require('./db'))).then(m => m.getUserByReferralCode(code));
             if (referrer)
-                await (0, referral_1.notifyReferrer)(referrer.id, firstName);
+                await (0, referral_1.notifyReferrer)(referrer.id, userId);
         }
     }
     const premium = await (0, db_1.isPremium)(userId);
