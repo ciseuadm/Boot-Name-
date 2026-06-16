@@ -123,24 +123,9 @@ async function handleTemplateApplyLink(userId, chatId, text, templateName, state
         return;
     }
     states.set(userId, { step: 'idle' });
-    const user = await (0, db_1.getUser)(userId);
-    const useTracking = premium && (user?.stats_enabled ?? false) && !!tg_1.WEBHOOK_URL;
-    let finalRows = rows;
-    if (useTracking) {
-        const tracked = [];
-        for (const row of rows) {
-            const trackedRow = [];
-            for (const btn of row) {
-                const code = await (0, db_1.createTrackedLink)(userId, btn.url, btn.text, String(parsed.chatId), parsed.messageId);
-                trackedRow.push({ text: btn.text, url: `${tg_1.WEBHOOK_URL}/r/${code}` });
-            }
-            tracked.push(trackedRow);
-        }
-        finalRows = tracked;
-    }
     try {
         const markup = {
-            inline_keyboard: finalRows.map(row => row.map((b) => ({ text: b.text, url: b.url }))),
+            inline_keyboard: rows.map(row => row.map((b) => ({ text: b.text, url: b.url }))),
         };
         await (0, tg_1.editMarkup)(parsed.chatId, parsed.messageId, markup);
         await (0, db_1.logUsage)(userId, 'add_buttons');

@@ -1,4 +1,4 @@
-import { sendMessage, editMarkup, WEBHOOK_URL } from '../tg';
+import { sendMessage, editMarkup } from '../tg';
 import { ce } from '../emoji';
 import {
   isPremium,
@@ -7,8 +7,6 @@ import {
   FREE_DAILY_LIMIT,
   FREE_MAX_BUTTONS,
   PREMIUM_MAX_BUTTONS,
-  createTrackedLink,
-  getUser,
 } from '../db';
 import { parseButtons, formatButtonPreview, InlineButton } from '../parser';
 import type { UserState } from '../bot';
@@ -116,36 +114,12 @@ export async function handleButtonsInput(
     return;
   }
 
-  const { chatId: postChatId, messageId, tracking } = state;
+  const { chatId: postChatId, messageId } = state;
   states.set(userId, { step: 'idle' });
 
-  const user = await getUser(userId);
-  const useTracking = tracking && premium && (user?.stats_enabled ?? false) && !!WEBHOOK_URL;
-
   try {
-    let finalRows = rows;
-
-    if (useTracking) {
-      const tracked: InlineButton[][] = [];
-      for (const row of rows) {
-        const trackedRow: InlineButton[] = [];
-        for (const btn of row) {
-          const code = await createTrackedLink(
-            userId,
-            btn.url,
-            btn.text,
-            String(postChatId),
-            messageId,
-          );
-          trackedRow.push({ text: btn.text, url: `${WEBHOOK_URL}/r/${code}` });
-        }
-        tracked.push(trackedRow);
-      }
-      finalRows = tracked;
-    }
-
     const markup = {
-      inline_keyboard: finalRows.map(row =>
+      inline_keyboard: rows.map(row =>
         row.map((b: InlineButton) => ({ text: b.text, url: b.url })),
       ),
     };
@@ -154,15 +128,10 @@ export async function handleButtonsInput(
 
     const total = rows.reduce((s, r) => s + r.length, 0);
     const preview = formatButtonPreview(rows);
-    const statsNote = useTracking
-      ? `\n\n${ce('chart')} Отслеживание кликов включено. Смотри /stats`
-      : premium
-      ? `\n\n${ce('bulb')} Включи отслеживание кликов командой /stats on`
-      : '';
 
     await sendMessage(
       chatId,
-      `${ce('check')} Готово! Добавил ${total} ${btnWord(total)}:\n\n<code>${preview}</code>${statsNote}\n\n${ce('dividers')} Сохранить как шаблон: /save`,
+      `${ce('check')} Готово! Добавил ${total} ${btnWord(total)}:\n\n<code>${preview}</code>\n\n${ce('dividers')} Сохранить как шаблон: /save`,
     );
   } catch (e) {
     await sendMessage(

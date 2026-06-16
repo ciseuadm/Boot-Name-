@@ -103,37 +103,17 @@ async function handleButtonsInput(userId, chatId, text, state, states) {
         await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('warning')} Не смог разобрать кнопки.\n\nПроверь формат или лимит (макс. ${limit} кнопок).\n\n${exports.BUTTON_FORMAT_HELP}\n\n/cancel — отмена`);
         return;
     }
-    const { chatId: postChatId, messageId, tracking } = state;
+    const { chatId: postChatId, messageId } = state;
     states.set(userId, { step: 'idle' });
-    const user = await (0, db_1.getUser)(userId);
-    const useTracking = tracking && premium && (user?.stats_enabled ?? false) && !!tg_1.WEBHOOK_URL;
     try {
-        let finalRows = rows;
-        if (useTracking) {
-            const tracked = [];
-            for (const row of rows) {
-                const trackedRow = [];
-                for (const btn of row) {
-                    const code = await (0, db_1.createTrackedLink)(userId, btn.url, btn.text, String(postChatId), messageId);
-                    trackedRow.push({ text: btn.text, url: `${tg_1.WEBHOOK_URL}/r/${code}` });
-                }
-                tracked.push(trackedRow);
-            }
-            finalRows = tracked;
-        }
         const markup = {
-            inline_keyboard: finalRows.map(row => row.map((b) => ({ text: b.text, url: b.url }))),
+            inline_keyboard: rows.map(row => row.map((b) => ({ text: b.text, url: b.url }))),
         };
         await (0, tg_1.editMarkup)(postChatId, messageId, markup);
         await (0, db_1.logUsage)(userId, 'add_buttons');
         const total = rows.reduce((s, r) => s + r.length, 0);
         const preview = (0, parser_1.formatButtonPreview)(rows);
-        const statsNote = useTracking
-            ? `\n\n${(0, emoji_1.ce)('chart')} Отслеживание кликов включено. Смотри /stats`
-            : premium
-                ? `\n\n${(0, emoji_1.ce)('bulb')} Включи отслеживание кликов командой /stats on`
-                : '';
-        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('check')} Готово! Добавил ${total} ${btnWord(total)}:\n\n<code>${preview}</code>${statsNote}\n\n${(0, emoji_1.ce)('dividers')} Сохранить как шаблон: /save`);
+        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('check')} Готово! Добавил ${total} ${btnWord(total)}:\n\n<code>${preview}</code>\n\n${(0, emoji_1.ce)('dividers')} Сохранить как шаблон: /save`);
     }
     catch (e) {
         await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('cross')} Ошибка: ${e.message}\n\nУбедись, что:\n• Бот — администратор канала\n• Есть право <i>Редактировать сообщения</i>\n• Ссылка ведёт на верный пост`);

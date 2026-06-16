@@ -1,4 +1,4 @@
-import { sendMessage, editMarkup, WEBHOOK_URL } from '../tg';
+import { sendMessage, editMarkup } from '../tg';
 import {
   getTemplates,
   getTemplate,
@@ -11,8 +11,6 @@ import {
   FREE_DAILY_LIMIT,
   FREE_MAX_TEMPLATES,
   PREMIUM_MAX_TEMPLATES,
-  createTrackedLink,
-  getUser,
 } from '../db';
 import { parsePostLink, parseButtons, formatButtonPreview, InlineButton } from '../parser';
 import { FREE_MAX_BUTTONS, PREMIUM_MAX_BUTTONS } from '../db';
@@ -210,32 +208,9 @@ export async function handleTemplateApplyLink(
 
   states.set(userId, { step: 'idle' });
 
-  const user = await getUser(userId);
-  const useTracking = premium && (user?.stats_enabled ?? false) && !!WEBHOOK_URL;
-  let finalRows = rows;
-
-  if (useTracking) {
-    const tracked: InlineButton[][] = [];
-    for (const row of rows) {
-      const trackedRow: InlineButton[] = [];
-      for (const btn of row) {
-        const code = await createTrackedLink(
-          userId,
-          btn.url,
-          btn.text,
-          String(parsed.chatId),
-          parsed.messageId,
-        );
-        trackedRow.push({ text: btn.text, url: `${WEBHOOK_URL}/r/${code}` });
-      }
-      tracked.push(trackedRow);
-    }
-    finalRows = tracked;
-  }
-
   try {
     const markup = {
-      inline_keyboard: finalRows.map(row =>
+      inline_keyboard: rows.map(row =>
         row.map((b: InlineButton) => ({ text: b.text, url: b.url })),
       ),
     };
