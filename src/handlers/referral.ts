@@ -22,7 +22,6 @@ export async function handleRefCommand(userId: number, chatId: number): Promise<
 
   const link = `https://t.me/${BOT_USERNAME}?start=ref_${user.referral_code}`;
   const count = user.referral_count;
-  const nextBonus = 3 - (count % 3);
   const premium = await isPremium(userId);
 
   await sendMessage(
@@ -35,7 +34,6 @@ export async function handleRefCommand(userId: number, chatId: number): Promise<
       `${ce('fire')} Каждые 3 реферала = <b>+5 дней Premium</b> бонусом\n\n` +
       `${ce('chart')} Твоя статистика:\n` +
       `${ce('people')} Рефералов: <b>${count}</b>\n` +
-      `До следующего бонуса (+5 дней): <b>${nextBonus}</b>\n` +
       (premium ? '' : `\n${ce('bulb')} Начни делиться ссылкой прямо сейчас!`),
   );
 }

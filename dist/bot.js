@@ -58,6 +58,7 @@ const WELCOME = `${(0, emoji_1.ce)('check')} <b>Add Button Bot</b>
 
 ${(0, emoji_1.ce)('ninja')} Без пометки «изменено» — пост не меняется
 ${(0, emoji_1.ce)('noentry')} Без рекламных подписей, как у Postbot
+${(0, emoji_1.ce)('star')} С премиум-эмодзи в постах
 ${(0, emoji_1.ce)('bolt')} Кнопки появляются за пару секунд
 ${(0, emoji_1.ce)('chart')} Аналитика кликов · ${(0, emoji_1.ce)('alarm')} отложенный постинг
 
@@ -68,7 +69,7 @@ ${(0, emoji_1.ce)('num3')} Жми /add ${(0, emoji_1.ce)('rocket')}
 
 Все команды — /help`;
 // Full command reference shown on /help
-const HELP = `${(0, emoji_1.ce)('book')}  <b>Add Button Bot</b>
+const HELP = `${(0, emoji_1.ce)('check')}  <b>Add Button Bot</b>
 
 Добавляю, меняю и удаляю кнопки под постами канала — без пометки «изменено» и без рекламных подписей на постах.
 

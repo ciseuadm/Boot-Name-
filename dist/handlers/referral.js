@@ -58,7 +58,6 @@ async function handleRefCommand(userId, chatId) {
         return;
     const link = `https://t.me/${tg_1.BOT_USERNAME}?start=ref_${user.referral_code}`;
     const count = user.referral_count;
-    const nextBonus = 3 - (count % 3);
     const premium = await (0, db_1.isPremium)(userId);
     await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('handshake')} <b>Реферальная программа</b>\n\n` +
         `Твоя ссылка:\n<code>${link}</code>\n\n` +
@@ -68,7 +67,6 @@ async function handleRefCommand(userId, chatId) {
         `${(0, emoji_1.ce)('fire')} Каждые 3 реферала = <b>+5 дней Premium</b> бонусом\n\n` +
         `${(0, emoji_1.ce)('chart')} Твоя статистика:\n` +
         `${(0, emoji_1.ce)('people')} Рефералов: <b>${count}</b>\n` +
-        `До следующего бонуса (+5 дней): <b>${nextBonus}</b>\n` +
         (premium ? '' : `\n${(0, emoji_1.ce)('bulb')} Начни делиться ссылкой прямо сейчас!`));
 }
 // Called after successful referral — notify referrer

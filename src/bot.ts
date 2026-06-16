@@ -69,6 +69,7 @@ const WELCOME = `${ce('check')} <b>Add Button Bot</b>
 
 ${ce('ninja')} Без пометки «изменено» — пост не меняется
 ${ce('noentry')} Без рекламных подписей, как у Postbot
+${ce('star')} С премиум-эмодзи в постах
 ${ce('bolt')} Кнопки появляются за пару секунд
 ${ce('chart')} Аналитика кликов · ${ce('alarm')} отложенный постинг
 
@@ -80,7 +81,7 @@ ${ce('num3')} Жми /add ${ce('rocket')}
 Все команды — /help`;
 
 // Full command reference shown on /help
-const HELP = `${ce('book')}  <b>Add Button Bot</b>
+const HELP = `${ce('check')}  <b>Add Button Bot</b>
 
 Добавляю, меняю и удаляю кнопки под постами канала — без пометки «изменено» и без рекламных подписей на постах.
 
