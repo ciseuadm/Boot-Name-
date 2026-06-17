@@ -45,6 +45,12 @@ async function handleCursorCommand(userId, chatId, states) {
         return;
     }
     states.set(userId, { step: 'cursor_mode' });
+    const access = await (0, cursor_1.checkCursorRepoAccess)();
+    if (!access.ok) {
+        states.set(userId, { step: 'idle' });
+        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('warning')} ${access.message}`);
+        return;
+    }
     // Resume the previous conversation if one exists.
     if (!session.has(userId)) {
         const last = await (0, db_1.getLatestCursorAgent)(userId).catch(() => null);
@@ -120,9 +126,8 @@ async function handleCursorTask(userId, chatId, text) {
         await deliverOutcome(chatId, outcome);
     }
     catch (e) {
-        await (0, db_1.finishCursorTask)(taskId, 'error', e.message, null);
-        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('cross')} <b>Ошибка запуска Cursor:</b> ${e.message}\n\n` +
-            `Проверь CURSOR_API_KEY и доступ ключа к репозиторию.`);
+        await (0, db_1.finishCursorTask)(taskId, 'error', (0, cursor_1.formatCursorError)(e), null);
+        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('cross')} <b>Ошибка запуска Cursor:</b>\n\n${(0, cursor_1.formatCursorError)(e)}`);
     }
     finally {
         inFlight.delete(userId);

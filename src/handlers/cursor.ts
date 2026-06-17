@@ -24,6 +24,8 @@ import {
   runCursorTask,
   awaitExistingRun,
   cancelCursorRun,
+  checkCursorRepoAccess,
+  formatCursorError,
   CursorOutcome,
 } from '../cursor';
 import type { UserState } from '../bot';
@@ -61,6 +63,13 @@ export async function handleCursorCommand(
   }
 
   states.set(userId, { step: 'cursor_mode' });
+
+  const access = await checkCursorRepoAccess();
+  if (!access.ok) {
+    states.set(userId, { step: 'idle' });
+    await sendMessage(chatId, `${ce('warning')} ${access.message}`);
+    return;
+  }
 
   // Resume the previous conversation if one exists.
   if (!session.has(userId)) {
@@ -157,11 +166,10 @@ export async function handleCursorTask(
     await finishCursorTask(taskId, outcome.status, outcome.result ?? null, outcome.prUrl ?? null);
     await deliverOutcome(chatId, outcome);
   } catch (e) {
-    await finishCursorTask(taskId, 'error', (e as Error).message, null);
+    await finishCursorTask(taskId, 'error', formatCursorError(e), null);
     await sendMessage(
       chatId,
-      `${ce('cross')} <b>Ошибка запуска Cursor:</b> ${(e as Error).message}\n\n` +
-        `Проверь CURSOR_API_KEY и доступ ключа к репозиторию.`,
+      `${ce('cross')} <b>Ошибка запуска Cursor:</b>\n\n${formatCursorError(e)}`,
     );
   } finally {
     inFlight.delete(userId);
