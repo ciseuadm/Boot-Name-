@@ -146,7 +146,9 @@ async function deliverOutcome(chatId, outcome) {
     await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('check')} <b>Ответ от Cursor:</b>`);
     await (0, tg_1.sendPlain)(chatId, outcome.result ?? '(агент не вернул текста)');
     if (outcome.prUrl) {
-        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('link')} Pull request: ${outcome.prUrl}`);
+        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('link')} Pull request: ${outcome.prUrl}\n\n` +
+            `${(0, emoji_1.ce)('warning')} <b>Важно:</b> бот на Railway обновляется только после merge PR в <code>main</code>. ` +
+            `Пока PR открыт — в боте старый код.`);
     }
 }
 // ── Crash recovery ────────────────────────────────────────────────────────────

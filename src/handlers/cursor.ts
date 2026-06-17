@@ -196,7 +196,12 @@ async function deliverOutcome(chatId: number, outcome: CursorOutcome): Promise<v
   await sendMessage(chatId, `${ce('check')} <b>Ответ от Cursor:</b>`);
   await sendPlain(chatId, outcome.result ?? '(агент не вернул текста)');
   if (outcome.prUrl) {
-    await sendMessage(chatId, `${ce('link')} Pull request: ${outcome.prUrl}`);
+    await sendMessage(
+      chatId,
+      `${ce('link')} Pull request: ${outcome.prUrl}\n\n` +
+        `${ce('warning')} <b>Важно:</b> бот на Railway обновляется только после merge PR в <code>main</code>. ` +
+        `Пока PR открыт — в боте старый код.`,
+    );
   }
 }
 
