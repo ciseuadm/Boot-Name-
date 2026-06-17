@@ -45,6 +45,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.cursorConfigured = cursorConfigured;
 exports.normalizeRepoUrl = normalizeRepoUrl;
 exports.getCursorRepoUrl = getCursorRepoUrl;
+exports.cursorAgentUrl = cursorAgentUrl;
 exports.checkCursorRepoAccess = checkCursorRepoAccess;
 exports.formatCursorError = formatCursorError;
 exports.runCursorTask = runCursorTask;
@@ -71,6 +72,10 @@ function normalizeRepoUrl(url) {
 }
 function getCursorRepoUrl() {
     return REPO_URL;
+}
+/** Web URL to watch a cloud agent live (same account as CURSOR_API_KEY). */
+function cursorAgentUrl(agentId) {
+    return `https://cursor.com/agents/${agentId}`;
 }
 /**
  * Lists repos the API key can actually reach via the Cursor ↔ GitHub integration.

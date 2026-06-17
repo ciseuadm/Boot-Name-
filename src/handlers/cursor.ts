@@ -26,6 +26,7 @@ import {
   cancelCursorRun,
   checkCursorRepoAccess,
   formatCursorError,
+  cursorAgentUrl,
   CursorOutcome,
 } from '../cursor';
 import type { UserState } from '../bot';
@@ -161,6 +162,12 @@ export async function handleCursorTask(
       forceNew.delete(userId);
       inFlight.set(userId, { taskId, agentId, runId });
       await setCursorTaskRun(taskId, agentId, runId);
+      // Cloud agents don't appear in the IDE sidebar — send a direct link instead.
+      await sendMessage(
+        chatId,
+        `${ce('link')} Смотреть агента в Cursor:\n${cursorAgentUrl(agentId)}\n\n` +
+          `${ce('bulb')} Это <b>Cloud Agent</b> — он не появится в списке локальных чатов слева.`,
+      ).catch(() => {});
     });
 
     await finishCursorTask(taskId, outcome.status, outcome.result ?? null, outcome.prUrl ?? null);

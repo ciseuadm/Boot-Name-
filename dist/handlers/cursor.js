@@ -121,6 +121,9 @@ async function handleCursorTask(userId, chatId, text) {
             forceNew.delete(userId);
             inFlight.set(userId, { taskId, agentId, runId });
             await (0, db_1.setCursorTaskRun)(taskId, agentId, runId);
+            // Cloud agents don't appear in the IDE sidebar — send a direct link instead.
+            await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('link')} Смотреть агента в Cursor:\n${(0, cursor_1.cursorAgentUrl)(agentId)}\n\n` +
+                `${(0, emoji_1.ce)('bulb')} Это <b>Cloud Agent</b> — он не появится в списке локальных чатов слева.`).catch(() => { });
         });
         await (0, db_1.finishCursorTask)(taskId, outcome.status, outcome.result ?? null, outcome.prUrl ?? null);
         await deliverOutcome(chatId, outcome);

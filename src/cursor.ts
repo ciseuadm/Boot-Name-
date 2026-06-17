@@ -39,6 +39,11 @@ export function getCursorRepoUrl(): string {
   return REPO_URL;
 }
 
+/** Web URL to watch a cloud agent live (same account as CURSOR_API_KEY). */
+export function cursorAgentUrl(agentId: string): string {
+  return `https://cursor.com/agents/${agentId}`;
+}
+
 export interface CursorRepoCheck {
   ok: boolean;
   message: string;
