@@ -1,7 +1,21 @@
-import { sendMessage, sendInvoice, answerPreCheckout, tg, BOT_USERNAME } from '../tg';
+import { sendMessage, sendPhoto, sendInvoice, answerPreCheckout, tg, BOT_USERNAME, WEBHOOK_URL } from '../tg';
 import { getUser, grantPremium, recordPayment, isPremium, PREMIUM_MAX_BUTTONS, PREMIUM_MAX_TEMPLATES } from '../db';
 import { ce } from '../emoji';
 import type { TgPreCheckoutQuery, TgMessage } from '../tg';
+
+const PREMIUM_AVATAR_URL = WEBHOOK_URL ? `${WEBHOOK_URL}/premium.png` : '';
+
+async function sendPremiumMessage(chatId: number, text: string): Promise<void> {
+  if (PREMIUM_AVATAR_URL) {
+    try {
+      await sendPhoto(chatId, PREMIUM_AVATAR_URL, text);
+      return;
+    } catch {
+      // Fall back to plain text if photo delivery fails
+    }
+  }
+  await sendMessage(chatId, text);
+}
 
 // Stars pricing
 export const PLANS = {
@@ -19,7 +33,7 @@ export async function handlePremiumCommand(userId: number, chatId: number): Prom
     const until = user?.premium_until
       ? new Date(user.premium_until).toLocaleDateString('ru-RU')
       : null;
-    await sendMessage(
+    await sendPremiumMessage(
       chatId,
       `${ce('crown')} <b>Add Button Premium</b>\n\n` +
         `Полный доступ открыт${until ? ` — до <b>${until}</b>` : ''}.\n` +
@@ -29,7 +43,7 @@ export async function handlePremiumCommand(userId: number, chatId: number): Prom
     return;
   }
 
-  await sendMessage(
+  await sendPremiumMessage(
     chatId,
     `${ce('gem')} <b>Add Button Premium</b>\n\n` +
       `<i>Каналы, на которые хочется подписаться, выглядят дорого.</i>\n` +

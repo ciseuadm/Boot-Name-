@@ -9,6 +9,19 @@ exports.handleSuccessfulPayment = handleSuccessfulPayment;
 const tg_1 = require("../tg");
 const db_1 = require("../db");
 const emoji_1 = require("../emoji");
+const PREMIUM_AVATAR_URL = tg_1.WEBHOOK_URL ? `${tg_1.WEBHOOK_URL}/premium.png` : '';
+async function sendPremiumMessage(chatId, text) {
+    if (PREMIUM_AVATAR_URL) {
+        try {
+            await (0, tg_1.sendPhoto)(chatId, PREMIUM_AVATAR_URL, text);
+            return;
+        }
+        catch {
+            // Fall back to plain text if photo delivery fails
+        }
+    }
+    await (0, tg_1.sendMessage)(chatId, text);
+}
 // Stars pricing
 exports.PLANS = {
     monthly: { stars: 149, months: 1, label: '1 месяц', key: 'premium_monthly' },
@@ -22,13 +35,13 @@ async function handlePremiumCommand(userId, chatId) {
         const until = user?.premium_until
             ? new Date(user.premium_until).toLocaleDateString('ru-RU')
             : null;
-        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('crown')} <b>Add Button Premium</b>\n\n` +
+        await sendPremiumMessage(chatId, `${(0, emoji_1.ce)('crown')} <b>Add Button Premium</b>\n\n` +
             `Полный доступ открыт${until ? ` — до <b>${until}</b>` : ''}.\n` +
             `<i>Ни лимитов, ни границ. Канал звучит так, как ты задумал.</i>\n\n` +
             `${(0, emoji_1.ce)('handshake')} Хочешь дольше и бесплатно? Приглашай друзей — /ref`);
         return;
     }
-    await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('gem')} <b>Add Button Premium</b>\n\n` +
+    await sendPremiumMessage(chatId, `${(0, emoji_1.ce)('gem')} <b>Add Button Premium</b>\n\n` +
         `<i>Каналы, на которые хочется подписаться, выглядят дорого.</i>\n` +
         `Premium даёт твоим постам именно такой вид.\n\n` +
         `${(0, emoji_1.ce)('bolt')} <b>Без лимитов</b> — публикуй и оформляй сколько нужно\n` +
