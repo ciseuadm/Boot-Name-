@@ -129,6 +129,23 @@ export async function getChatMember(
   return tg<TgChatMember>('getChatMember', { chat_id: chatId, user_id: userId });
 }
 
+/**
+ * Whether the user is the owner or an administrator of the given chat/channel.
+ * Returns false if the status can't be resolved (e.g. user not in the chat,
+ * or the bot lacks rights to query members).
+ */
+export async function isChatAdmin(
+  chatId: string | number,
+  userId: number,
+): Promise<boolean> {
+  try {
+    const m = await getChatMember(chatId, userId);
+    return m.status === 'creator' || m.status === 'administrator';
+  } catch {
+    return false;
+  }
+}
+
 export async function answerPreCheckout(
   preCheckoutQueryId: string,
   ok: boolean,

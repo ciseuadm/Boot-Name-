@@ -10,6 +10,7 @@ exports.sendPhoto = sendPhoto;
 exports.editMarkup = editMarkup;
 exports.answerCallback = answerCallback;
 exports.getChatMember = getChatMember;
+exports.isChatAdmin = isChatAdmin;
 exports.answerPreCheckout = answerPreCheckout;
 exports.sendInvoice = sendInvoice;
 exports.initBotInfo = initBotInfo;
@@ -108,6 +109,20 @@ async function answerCallback(callbackQueryId, text, showAlert = false) {
 }
 async function getChatMember(chatId, userId) {
     return tg('getChatMember', { chat_id: chatId, user_id: userId });
+}
+/**
+ * Whether the user is the owner or an administrator of the given chat/channel.
+ * Returns false if the status can't be resolved (e.g. user not in the chat,
+ * or the bot lacks rights to query members).
+ */
+async function isChatAdmin(chatId, userId) {
+    try {
+        const m = await getChatMember(chatId, userId);
+        return m.status === 'creator' || m.status === 'administrator';
+    }
+    catch {
+        return false;
+    }
 }
 async function answerPreCheckout(preCheckoutQueryId, ok, errorMessage) {
     await tg('answerPreCheckoutQuery', {

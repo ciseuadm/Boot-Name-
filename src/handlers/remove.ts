@@ -1,6 +1,7 @@
-import { sendMessage, editMarkup } from '../tg';
+import { sendMessage, editMarkup, isChatAdmin } from '../tg';
 import { ce } from '../emoji';
 import { parsePostLink } from '../parser';
+import { NOT_CHANNEL_ADMIN } from './add';
 import type { UserState } from '../bot';
 
 export async function handleRemoveCommand(
@@ -27,6 +28,12 @@ export async function handleLinkRemove(
       chatId,
       `${ce('warning')} Не распознал ссылку. Попробуй ещё раз.\n\n/cancel — отмена`,
     );
+    return;
+  }
+
+  if (!(await isChatAdmin(parsed.chatId, userId))) {
+    states.set(userId, { step: 'idle' });
+    await sendMessage(chatId, NOT_CHANNEL_ADMIN);
     return;
   }
 

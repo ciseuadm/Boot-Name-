@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.BUTTON_FORMAT_HELP = void 0;
+exports.BUTTON_FORMAT_HELP = exports.NOT_CHANNEL_ADMIN = void 0;
 exports.handleAddCommand = handleAddCommand;
 exports.handleLinkAdd = handleLinkAdd;
 exports.handleButtonsInput = handleButtonsInput;
@@ -41,6 +41,9 @@ const tg_1 = require("../tg");
 const emoji_1 = require("../emoji");
 const db_1 = require("../db");
 const parser_1 = require("../parser");
+exports.NOT_CHANNEL_ADMIN = `${(0, emoji_1.ce)('lock')} <b>Доступ запрещён.</b>\n\n` +
+    `Управлять кнопками этого поста может только администратор канала. ` +
+    `Добавь себя в админы канала или попроси владельца сделать это.`;
 exports.BUTTON_FORMAT_HELP = `<b>Формат кнопок:</b>
 
 Каждая строка — отдельный ряд кнопок.
@@ -79,6 +82,11 @@ async function handleLinkAdd(userId, chatId, text, states) {
             '<code>https://t.me/канал/42</code> — публичный\n' +
             '<code>https://t.me/c/1234567890/42</code> — приватный\n\n' +
             '/cancel — отмена');
+        return;
+    }
+    if (!(await (0, tg_1.isChatAdmin)(parsed.chatId, userId))) {
+        states.set(userId, { step: 'idle' });
+        await (0, tg_1.sendMessage)(chatId, exports.NOT_CHANNEL_ADMIN);
         return;
     }
     const maxButtons = (await (0, db_1.isPremium)(userId)) ? db_1.PREMIUM_MAX_BUTTONS : db_1.FREE_MAX_BUTTONS;

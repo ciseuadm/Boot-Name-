@@ -1,4 +1,4 @@
-import { sendMessage, editMarkup } from '../tg';
+import { sendMessage, editMarkup, isChatAdmin } from '../tg';
 import { ce } from '../emoji';
 import {
   isPremium,
@@ -10,6 +10,11 @@ import {
 } from '../db';
 import { parseButtons, formatButtonPreview, InlineButton } from '../parser';
 import type { UserState } from '../bot';
+
+export const NOT_CHANNEL_ADMIN =
+  `${ce('lock')} <b>Доступ запрещён.</b>\n\n` +
+  `Управлять кнопками этого поста может только администратор канала. ` +
+  `Добавь себя в админы канала или попроси владельца сделать это.`;
 
 export const BUTTON_FORMAT_HELP = `<b>Формат кнопок:</b>
 
@@ -71,6 +76,12 @@ export async function handleLinkAdd(
         '<code>https://t.me/c/1234567890/42</code> — приватный\n\n' +
         '/cancel — отмена',
     );
+    return;
+  }
+
+  if (!(await isChatAdmin(parsed.chatId, userId))) {
+    states.set(userId, { step: 'idle' });
+    await sendMessage(chatId, NOT_CHANNEL_ADMIN);
     return;
   }
 

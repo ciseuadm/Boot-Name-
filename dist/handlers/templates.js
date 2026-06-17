@@ -9,6 +9,7 @@ exports.handleTemplateApplyLink = handleTemplateApplyLink;
 exports.handleDeleteTemplate = handleDeleteTemplate;
 exports.handleTemplateDeleteName = handleTemplateDeleteName;
 const tg_1 = require("../tg");
+const add_1 = require("./add");
 const db_1 = require("../db");
 const parser_1 = require("../parser");
 const db_2 = require("../db");
@@ -98,6 +99,11 @@ async function handleTemplateApplyLink(userId, chatId, text, templateName, state
     const parsed = (0, parser_1.parsePostLink)(text);
     if (!parsed) {
         await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('warning')} Не распознал ссылку. Попробуй ещё раз.\n\n/cancel — отмена`);
+        return;
+    }
+    if (!(await (0, tg_1.isChatAdmin)(parsed.chatId, userId))) {
+        states.set(userId, { step: 'idle' });
+        await (0, tg_1.sendMessage)(chatId, add_1.NOT_CHANNEL_ADMIN);
         return;
     }
     const template = await (0, db_1.getTemplate)(userId, templateName);
