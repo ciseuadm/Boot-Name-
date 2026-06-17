@@ -1,15 +1,29 @@
-import { sendMessage, ADMIN_IDS, tg } from '../tg';
+import { sendMessage, notifyAdmins, ADMIN_IDS, tg } from '../tg';
 import { ce } from '../emoji';
 import { getAdminStats, getAllUserIds, grantPremium, getUser } from '../db';
+import { hit } from '../ratelimit';
 import type { UserState } from '../bot';
 
 function isAdmin(userId: number): boolean {
   return ADMIN_IDS.includes(userId);
 }
 
+/** Logs and rejects a non-admin trying to reach an admin-only action. */
+function denyIfNotAdmin(userId: number, action: string): boolean {
+  if (isAdmin(userId)) return false;
+  console.warn(`[security] Unauthorized admin attempt: user=${userId} action=${action}`);
+  // Alert admins, but at most once per minute so it can't be used to spam them.
+  if (hit('admin-alert', 1, 60_000).allowed) {
+    void notifyAdmins(
+      `${ce('lock')} Попытка доступа к админ-команде <code>${action}</code> от пользователя <code>${userId}</code>.`,
+    );
+  }
+  return true;
+}
+
 // /admin — statistics panel
 export async function handleAdminCommand(userId: number, chatId: number): Promise<void> {
-  if (!isAdmin(userId)) return;
+  if (denyIfNotAdmin(userId, '/admin')) return;
 
   const s = await getAdminStats();
 
@@ -24,7 +38,8 @@ export async function handleAdminCommand(userId: number, chatId: number): Promis
       `${ce('money')} Оплат: <b>${s.totalPayments}</b>\n\n` +
       `<b>Команды:</b>\n` +
       `/grant_premium USER_ID MONTHS\n` +
-      `/broadcast ТЕКСТ`,
+      `/broadcast ТЕКСТ\n` +
+      `/cursor — связь с Cursor (задачи по коду)`,
   );
 }
 
@@ -34,7 +49,7 @@ export async function handleGrantPremium(
   chatId: number,
   arg: string,
 ): Promise<void> {
-  if (!isAdmin(adminId)) return;
+  if (denyIfNotAdmin(adminId, '/grant_premium')) return;
 
   const parts = arg.trim().split(/\s+/);
   const userId = parseInt(parts[0] ?? '', 10);
@@ -68,7 +83,7 @@ export async function handleBroadcast(
   text: string,
   states: Map<number, UserState>,
 ): Promise<void> {
-  if (!isAdmin(adminId)) return;
+  if (denyIfNotAdmin(adminId, '/broadcast')) return;
 
   if (!text.trim()) {
     states.set(adminId, { step: 'waiting_broadcast_text' });
@@ -86,6 +101,7 @@ export async function handleBroadcastText(
   states: Map<number, UserState>,
 ): Promise<void> {
   states.set(adminId, { step: 'idle' });
+  if (denyIfNotAdmin(adminId, '/broadcast:text')) return;
   await doBroadcast(adminId, chatId, text.trim());
 }
 

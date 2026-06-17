@@ -91,6 +91,19 @@ export async function initDb(): Promise<void> {
       months INT NOT NULL DEFAULT 1,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
+    `CREATE TABLE IF NOT EXISTS cursor_tasks (
+      id SERIAL PRIMARY KEY,
+      admin_id BIGINT NOT NULL,
+      chat_id BIGINT NOT NULL,
+      agent_id TEXT,
+      run_id TEXT,
+      prompt TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'running',
+      result TEXT,
+      pr_url TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      finished_at TIMESTAMPTZ
+    )`,
   ];
 
   const client = await pool.connect();
@@ -373,4 +386,69 @@ export async function getAdminStats(): Promise<{
 export async function getAllUserIds(): Promise<number[]> {
   const { rows } = await pool.query<{ id: number }>('SELECT id FROM users ORDER BY created_at');
   return rows.map(r => r.id);
+}
+
+// ─── Cursor tasks ─────────────────────────────────────────────────────────────
+
+export interface CursorTask {
+  id: number;
+  admin_id: number;
+  chat_id: number;
+  agent_id: string | null;
+  run_id: string | null;
+  prompt: string;
+  status: 'running' | 'finished' | 'error' | 'cancelled';
+  result: string | null;
+  pr_url: string | null;
+}
+
+export async function createCursorTask(
+  adminId: number,
+  chatId: number,
+  prompt: string,
+): Promise<number> {
+  const { rows } = await pool.query<{ id: number }>(
+    `INSERT INTO cursor_tasks (admin_id, chat_id, prompt) VALUES ($1, $2, $3) RETURNING id`,
+    [adminId, chatId, prompt],
+  );
+  return rows[0]!.id;
+}
+
+export async function setCursorTaskRun(id: number, agentId: string, runId: string): Promise<void> {
+  await pool.query('UPDATE cursor_tasks SET agent_id = $2, run_id = $3 WHERE id = $1', [
+    id,
+    agentId,
+    runId,
+  ]);
+}
+
+export async function finishCursorTask(
+  id: number,
+  status: 'finished' | 'error' | 'cancelled',
+  result: string | null,
+  prUrl: string | null,
+): Promise<void> {
+  await pool.query(
+    `UPDATE cursor_tasks SET status = $2, result = $3, pr_url = $4, finished_at = NOW() WHERE id = $1`,
+    [id, status, result, prUrl],
+  );
+}
+
+/** Tasks that were dispatched but never reached a terminal state (crash recovery). */
+export async function getRunningCursorTasks(): Promise<CursorTask[]> {
+  const { rows } = await pool.query<CursorTask>(
+    `SELECT * FROM cursor_tasks WHERE status = 'running' AND run_id IS NOT NULL ORDER BY created_at`,
+  );
+  return rows;
+}
+
+/** Most recent agent id for an admin, to continue the conversation after a restart. */
+export async function getLatestCursorAgent(adminId: number): Promise<string | null> {
+  const { rows } = await pool.query<{ agent_id: string | null }>(
+    `SELECT agent_id FROM cursor_tasks
+     WHERE admin_id = $1 AND agent_id IS NOT NULL
+     ORDER BY created_at DESC LIMIT 1`,
+    [adminId],
+  );
+  return rows[0]?.agent_id ?? null;
 }

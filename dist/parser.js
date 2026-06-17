@@ -3,6 +3,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.parsePostLink = parsePostLink;
 exports.parseButtons = parseButtons;
 exports.formatButtonPreview = formatButtonPreview;
+const tg_1 = require("./tg");
+// Telegram caps inline-button text at 64 chars and URLs well under 2048; reject
+// anything wildly out of range early so we fail with a clear message instead of
+// an opaque Telegram API error (and don't forward absurd payloads upstream).
+const MAX_BTN_TEXT = 64;
+const MAX_BTN_URL = 2048;
 /**
  * Parse a Telegram post link into chatId + messageId.
  * Supports:
@@ -54,9 +60,10 @@ function parseButtons(text, maxButtons = 20) {
         for (let i = 0; i < parts.length; i += 2) {
             const btnText = parts[i];
             const btnUrl = parts[i + 1];
-            if (!btnText)
+            if (!btnText || btnText.length > MAX_BTN_TEXT)
                 return null;
-            if (!btnUrl.startsWith('http'))
+            // Only real web links: blocks javascript:/tg:/data: and stray text.
+            if (!/^https?:\/\/\S+$/i.test(btnUrl) || btnUrl.length > MAX_BTN_URL)
                 return null;
             row.push({ text: btnText, url: btnUrl });
             totalButtons++;
@@ -69,9 +76,13 @@ function parseButtons(text, maxButtons = 20) {
     }
     return rows;
 }
-/** Format a button layout back to readable text for confirmation preview */
+/**
+ * Format a button layout back to readable text for confirmation preview.
+ * The result is always rendered inside an HTML <code> block, so button text
+ * (user-controlled) must be escaped to avoid breaking/injecting markup.
+ */
 function formatButtonPreview(rows) {
     return rows
-        .map(row => row.map(b => `[${b.text}]`).join(' '))
+        .map(row => row.map(b => `[${(0, tg_1.escapeHtml)(b.text)}]`).join(' '))
         .join('\n');
 }

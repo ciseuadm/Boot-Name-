@@ -36,6 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleUpdate = handleUpdate;
 const tg_1 = require("./tg");
 const emoji_1 = require("./emoji");
+const ratelimit_1 = require("./ratelimit");
 const db_1 = require("./db");
 const gate_1 = require("./handlers/gate");
 const add_1 = require("./handlers/add");
@@ -45,6 +46,7 @@ const premium_1 = require("./handlers/premium");
 const referral_1 = require("./handlers/referral");
 const schedule_1 = require("./handlers/schedule");
 const admin_1 = require("./handlers/admin");
+const cursor_1 = require("./handlers/cursor");
 const states = new Map();
 function getState(userId) {
     return states.get(userId) ?? { step: 'idle' };
@@ -137,6 +139,14 @@ async function handleUpdate(update) {
         const userId = cq.from.id;
         const chatId = cq.message?.chat.id ?? userId;
         const data = cq.data ?? '';
+        // Anti-flood: throttle callback spam (e.g. mashing inline buttons).
+        if (!tg_1.ADMIN_IDS.includes(userId)) {
+            const r = (0, ratelimit_1.hit)(`cb:${userId}`, ratelimit_1.GENERAL_LIMIT, ratelimit_1.GENERAL_WINDOW_MS);
+            if (!r.allowed) {
+                await (0, tg_1.answerCallback)(cq.id, 'Слишком часто. Подожди немного.', true);
+                return;
+            }
+        }
         // Subscription gate: "I subscribed" button
         if (data === 'check_sub') {
             const ok = await (0, gate_1.isSubscribed)(userId, true);
@@ -165,6 +175,26 @@ async function handleUpdate(update) {
         return;
     const userId = msg.from.id;
     const chatId = msg.chat.id;
+    // Anti-flood / anti-spam: throttle before touching the DB or Telegram API.
+    // Admins are exempt (broadcasts iterate many users intentionally).
+    if (!tg_1.ADMIN_IDS.includes(userId)) {
+        const general = (0, ratelimit_1.hit)(`msg:${userId}`, ratelimit_1.GENERAL_LIMIT, ratelimit_1.GENERAL_WINDOW_MS);
+        if (!general.allowed) {
+            // Notify at most once per flood window to avoid becoming an amplifier.
+            if ((0, ratelimit_1.hit)(`notify:${userId}`, 1, ratelimit_1.GENERAL_WINDOW_MS).allowed) {
+                await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('warning')} Слишком много запросов. Подожди несколько секунд.`).catch(() => { });
+            }
+            return;
+        }
+        const rawText = (msg.text ?? '').trim();
+        if ((0, ratelimit_1.isHeavyCommand)(rawText)) {
+            const heavy = (0, ratelimit_1.hit)(`heavy:${userId}`, ratelimit_1.HEAVY_LIMIT, ratelimit_1.HEAVY_WINDOW_MS);
+            if (!heavy.allowed) {
+                await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('warning')} Слишком много операций подряд. Подожди минуту и попробуй снова.`).catch(() => { });
+                return;
+            }
+        }
+    }
     // Register / update user on every message
     await (0, db_1.getOrCreateUser)(userId, msg.from.first_name, msg.from.username);
     // Successful payment
@@ -288,6 +318,23 @@ async function handleUpdate(update) {
         await (0, admin_1.handleBroadcast)(userId, chatId, raw.slice(10).trim(), states);
         return;
     }
+    // ── Cursor bridge (admin only) ───────────────────────────────────────────────
+    if (raw === '/cursor') {
+        await (0, cursor_1.handleCursorCommand)(userId, chatId, states);
+        return;
+    }
+    if (raw === '/cursor_new') {
+        await (0, cursor_1.handleCursorNew)(userId, chatId);
+        return;
+    }
+    if (raw === '/cursor_off') {
+        await (0, cursor_1.handleCursorOff)(userId, chatId, states);
+        return;
+    }
+    if (raw === '/cursor_cancel') {
+        await (0, cursor_1.handleCursorCancel)(userId, chatId);
+        return;
+    }
     // ── State machine ──────────────────────────────────────────────────────────
     if (state.step === 'waiting_link_add') {
         await (0, add_1.handleLinkAdd)(userId, chatId, raw, states);
@@ -331,6 +378,10 @@ async function handleUpdate(update) {
     }
     if (state.step === 'waiting_broadcast_text') {
         await (0, admin_1.handleBroadcastText)(userId, chatId, raw, states);
+        return;
+    }
+    if (state.step === 'cursor_mode') {
+        await (0, cursor_1.handleCursorTask)(userId, chatId, raw);
         return;
     }
     // ── Default ────────────────────────────────────────────────────────────────

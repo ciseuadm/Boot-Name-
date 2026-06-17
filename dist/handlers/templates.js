@@ -25,7 +25,7 @@ async function handleTemplatesCommand(userId, chatId, states) {
         await (0, tg_1.sendMessage)(chatId, hint);
         return;
     }
-    const lines = templates.map((t, i) => `${i + 1}. <b>${t.name}</b>`).join('\n');
+    const lines = templates.map((t, i) => `${i + 1}. <b>${(0, tg_1.escapeHtml)(t.name)}</b>`).join('\n');
     const maxLabel = premium ? db_1.PREMIUM_MAX_TEMPLATES : db_1.FREE_MAX_TEMPLATES;
     await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('dividers')} <b>Твои шаблоны</b> (${templates.length}/${maxLabel}):\n\n${lines}\n\n` +
         `Применить: <code>/apply Название</code>\n` +
@@ -47,7 +47,7 @@ async function handleSaveCommand(userId, chatId, arg, states) {
         return;
     }
     states.set(userId, { step: 'waiting_template_buttons_save', name });
-    await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('puzzle')} Отправь кнопки для шаблона <b>"${name}"</b>:\n\nФормат: <code>Текст | URL</code> (каждая строка — ряд)\n\n/cancel — отмена`);
+    await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('puzzle')} Отправь кнопки для шаблона <b>"${(0, tg_1.escapeHtml)(name)}"</b>:\n\nФормат: <code>Текст | URL</code> (каждая строка — ряд)\n\n/cancel — отмена`);
 }
 async function handleTemplateName(userId, chatId, name, states) {
     const premium = await (0, db_1.isPremium)(userId);
@@ -59,7 +59,7 @@ async function handleTemplateName(userId, chatId, name, states) {
         return;
     }
     states.set(userId, { step: 'waiting_template_buttons_save', name });
-    await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('puzzle')} Отправь кнопки для шаблона <b>"${name}"</b>:\n\nФормат: <code>Текст | URL</code>\n\n/cancel — отмена`);
+    await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('puzzle')} Отправь кнопки для шаблона <b>"${(0, tg_1.escapeHtml)(name)}"</b>:\n\nФормат: <code>Текст | URL</code>\n\n/cancel — отмена`);
 }
 async function handleTemplateButtonsSave(userId, chatId, text, name, states) {
     const premium = await (0, db_1.isPremium)(userId);
@@ -72,7 +72,8 @@ async function handleTemplateButtonsSave(userId, chatId, text, name, states) {
     await (0, db_1.saveTemplate)(userId, name, text);
     states.set(userId, { step: 'idle' });
     const preview = (0, parser_1.formatButtonPreview)(rows);
-    await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('check')} Шаблон <b>"${name}"</b> сохранён!\n\n<code>${preview}</code>\n\nПрименить: <code>/apply ${name}</code>`);
+    const safeName = (0, tg_1.escapeHtml)(name);
+    await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('check')} Шаблон <b>"${safeName}"</b> сохранён!\n\n<code>${preview}</code>\n\nПрименить: <code>/apply ${safeName}</code>`);
 }
 // ── /apply ───────────────────────────────────────────────────────────────────
 async function handleApplyCommand(userId, chatId, arg, states) {
@@ -82,18 +83,18 @@ async function handleApplyCommand(userId, chatId, arg, states) {
             await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('bulb')} У тебя нет шаблонов. Создай шаблон командой /save.`);
             return;
         }
-        const list = templates.map(t => `• <code>/apply ${t.name}</code>`).join('\n');
+        const list = templates.map(t => `• <code>/apply ${(0, tg_1.escapeHtml)(t.name)}</code>`).join('\n');
         await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('dividers')} Твои шаблоны:\n\n${list}`);
         return;
     }
     const name = arg.trim();
     const template = await (0, db_1.getTemplate)(userId, name);
     if (!template) {
-        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('cross')} Шаблон <b>"${name}"</b> не найден.\n\nПосмотри список: /templates`);
+        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('cross')} Шаблон <b>"${(0, tg_1.escapeHtml)(name)}"</b> не найден.\n\nПосмотри список: /templates`);
         return;
     }
     states.set(userId, { step: 'waiting_template_apply_link', templateName: template.name });
-    await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('pushpin')} Шаблон <b>"${template.name}"</b> выбран.\n\n${(0, emoji_1.ce)('link')} Теперь отправь ссылку на пост:\n\n/cancel — отмена`);
+    await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('pushpin')} Шаблон <b>"${(0, tg_1.escapeHtml)(template.name)}"</b> выбран.\n\n${(0, emoji_1.ce)('link')} Теперь отправь ссылку на пост:\n\n/cancel — отмена`);
 }
 async function handleTemplateApplyLink(userId, chatId, text, templateName, states) {
     const parsed = (0, parser_1.parsePostLink)(text);
@@ -136,7 +137,7 @@ async function handleTemplateApplyLink(userId, chatId, text, templateName, state
         await (0, tg_1.editMarkup)(parsed.chatId, parsed.messageId, markup);
         await (0, db_1.logUsage)(userId, 'add_buttons');
         const total = rows.reduce((s, r) => s + r.length, 0);
-        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('check')} Шаблон <b>"${template.name}"</b> применён! (${total} ${btnWord(total)})`);
+        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('check')} Шаблон <b>"${(0, tg_1.escapeHtml)(template.name)}"</b> применён! (${total} ${btnWord(total)})`);
     }
     catch (e) {
         await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('cross')} Ошибка: ${e.message}\n\nУбедись, что бот — администратор канала.`);
@@ -156,12 +157,13 @@ async function handleTemplateDeleteName(userId, chatId, name, states) {
 }
 async function doDeleteTemplate(userId, chatId, name, states) {
     states.set(userId, { step: 'idle' });
+    const safeName = (0, tg_1.escapeHtml)(name);
     const deleted = await (0, db_1.deleteTemplate)(userId, name);
     if (deleted) {
-        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('check')} Шаблон <b>"${name}"</b> удалён.`);
+        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('check')} Шаблон <b>"${safeName}"</b> удалён.`);
     }
     else {
-        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('cross')} Шаблон <b>"${name}"</b> не найден.\n\nСписок шаблонов: /templates`);
+        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('cross')} Шаблон <b>"${safeName}"</b> не найден.\n\nСписок шаблонов: /templates`);
     }
 }
 function btnWord(n) {

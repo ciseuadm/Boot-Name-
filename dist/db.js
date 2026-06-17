@@ -28,6 +28,11 @@ exports.cancelScheduledTask = cancelScheduledTask;
 exports.recordPayment = recordPayment;
 exports.getAdminStats = getAdminStats;
 exports.getAllUserIds = getAllUserIds;
+exports.createCursorTask = createCursorTask;
+exports.setCursorTaskRun = setCursorTaskRun;
+exports.finishCursorTask = finishCursorTask;
+exports.getRunningCursorTasks = getRunningCursorTasks;
+exports.getLatestCursorAgent = getLatestCursorAgent;
 const pg_1 = require("pg");
 const crypto_1 = __importDefault(require("crypto"));
 exports.pool = new pg_1.Pool({
@@ -83,6 +88,19 @@ async function initDb() {
       plan_key TEXT NOT NULL,
       months INT NOT NULL DEFAULT 1,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+        `CREATE TABLE IF NOT EXISTS cursor_tasks (
+      id SERIAL PRIMARY KEY,
+      admin_id BIGINT NOT NULL,
+      chat_id BIGINT NOT NULL,
+      agent_id TEXT,
+      run_id TEXT,
+      prompt TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'running',
+      result TEXT,
+      pr_url TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      finished_at TIMESTAMPTZ
     )`,
     ];
     const client = await exports.pool.connect();
@@ -245,4 +263,30 @@ async function getAdminStats() {
 async function getAllUserIds() {
     const { rows } = await exports.pool.query('SELECT id FROM users ORDER BY created_at');
     return rows.map(r => r.id);
+}
+async function createCursorTask(adminId, chatId, prompt) {
+    const { rows } = await exports.pool.query(`INSERT INTO cursor_tasks (admin_id, chat_id, prompt) VALUES ($1, $2, $3) RETURNING id`, [adminId, chatId, prompt]);
+    return rows[0].id;
+}
+async function setCursorTaskRun(id, agentId, runId) {
+    await exports.pool.query('UPDATE cursor_tasks SET agent_id = $2, run_id = $3 WHERE id = $1', [
+        id,
+        agentId,
+        runId,
+    ]);
+}
+async function finishCursorTask(id, status, result, prUrl) {
+    await exports.pool.query(`UPDATE cursor_tasks SET status = $2, result = $3, pr_url = $4, finished_at = NOW() WHERE id = $1`, [id, status, result, prUrl]);
+}
+/** Tasks that were dispatched but never reached a terminal state (crash recovery). */
+async function getRunningCursorTasks() {
+    const { rows } = await exports.pool.query(`SELECT * FROM cursor_tasks WHERE status = 'running' AND run_id IS NOT NULL ORDER BY created_at`);
+    return rows;
+}
+/** Most recent agent id for an admin, to continue the conversation after a restart. */
+async function getLatestCursorAgent(adminId) {
+    const { rows } = await exports.pool.query(`SELECT agent_id FROM cursor_tasks
+     WHERE admin_id = $1 AND agent_id IS NOT NULL
+     ORDER BY created_at DESC LIMIT 1`, [adminId]);
+    return rows[0]?.agent_id ?? null;
 }

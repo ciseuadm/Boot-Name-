@@ -3,9 +3,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.BOT_USERNAME = exports.ADMIN_IDS = exports.WEBHOOK_URL = exports.BOT_TOKEN = void 0;
+exports.BOT_USERNAME = exports.ADMIN_IDS = exports.WEBHOOK_URL = exports.WEBHOOK_SECRET = exports.BOT_TOKEN = void 0;
+exports.escapeHtml = escapeHtml;
 exports.tg = tg;
 exports.sendMessage = sendMessage;
+exports.sendPlain = sendPlain;
+exports.notifyAdmins = notifyAdmins;
 exports.sendPhoto = sendPhoto;
 exports.editMarkup = editMarkup;
 exports.answerCallback = answerCallback;
@@ -17,8 +20,16 @@ exports.initBotInfo = initBotInfo;
 exports.setWebhook = setWebhook;
 exports.setMyCommands = setMyCommands;
 const node_fetch_1 = __importDefault(require("node-fetch"));
+const crypto_1 = __importDefault(require("crypto"));
 const emoji_1 = require("./emoji");
 exports.BOT_TOKEN = process.env.BOT_TOKEN ?? '';
+// Secret used to authenticate incoming webhook calls. Telegram echoes it back in
+// the `X-Telegram-Bot-Api-Secret-Token` header on every update, so we can reject
+// anyone POSTing to the webhook who is not Telegram — defense in depth on top of
+// the bot-token-in-path. Defaults to a stable value derived from the bot token
+// so the gate works without extra configuration, but can be overridden.
+exports.WEBHOOK_SECRET = process.env.WEBHOOK_SECRET ||
+    crypto_1.default.createHash('sha256').update(`whk:${exports.BOT_TOKEN}`).digest('hex').slice(0, 48);
 // Railway provides RAILWAY_PUBLIC_DOMAIN automatically — no manual WEBHOOK_URL needed
 exports.WEBHOOK_URL = process.env.WEBHOOK_URL ??
     (process.env.RAILWAY_PUBLIC_DOMAIN
@@ -32,6 +43,16 @@ if (!exports.BOT_TOKEN)
     throw new Error('BOT_TOKEN env var is required');
 const API = `https://api.telegram.org/bot${exports.BOT_TOKEN}`;
 exports.BOT_USERNAME = '';
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+/**
+ * Escapes the 3 characters that are significant in Telegram's HTML parse mode.
+ * Apply to ANY user-controlled value before interpolating it into an HTML
+ * message, otherwise malformed input breaks our own messages (Telegram rejects
+ * invalid HTML) or lets a user inject markup/links into the rendered text.
+ */
+function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 // ─── Core API call ──────────────────────────────────────────────────────────
 async function tg(method, body) {
     const res = await (0, node_fetch_1.default)(`${API}/${method}`, {
@@ -69,6 +90,26 @@ async function sendMessage(chatId, text, extra = {}) {
         }
         throw e;
     }
+}
+/**
+ * Sends plain text (no HTML parsing). Use for arbitrary/untrusted content such
+ * as a Cursor agent's answer, which may contain `<`, `>` or code that would
+ * break HTML parse mode. Long messages are split to fit Telegram's 4096 limit.
+ */
+async function sendPlain(chatId, text) {
+    const CHUNK = 3900;
+    const body = text.length > 0 ? text : '(пустой ответ)';
+    for (let i = 0; i < body.length; i += CHUNK) {
+        await tg('sendMessage', {
+            chat_id: chatId,
+            text: body.slice(i, i + CHUNK),
+            disable_web_page_preview: true,
+        });
+    }
+}
+/** Broadcasts a short notice to every configured admin (best-effort). */
+async function notifyAdmins(text) {
+    await Promise.all(exports.ADMIN_IDS.map(id => sendMessage(id, text).catch(() => { })));
 }
 async function sendPhoto(chatId, photo, caption, extra = {}) {
     try {
@@ -154,7 +195,12 @@ async function setWebhook() {
         return;
     }
     const url = `${exports.WEBHOOK_URL}/webhook/${exports.BOT_TOKEN}`;
-    await tg('setWebhook', { url, drop_pending_updates: true });
+    await tg('setWebhook', {
+        url,
+        drop_pending_updates: true,
+        secret_token: exports.WEBHOOK_SECRET,
+        max_connections: 40,
+    });
     console.log(`Webhook set: ${url}`);
 }
 async function setMyCommands() {
