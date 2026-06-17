@@ -31,17 +31,11 @@ exports.PLANS = {
 async function handlePremiumCommand(userId, chatId) {
     const user = await (0, db_1.getUser)(userId);
     const premium = await (0, db_1.isPremium)(userId);
-    if (premium) {
-        const until = user?.premium_until
-            ? new Date(user.premium_until).toLocaleDateString('ru-RU')
-            : null;
-        await sendPremiumMessage(chatId, `${(0, emoji_1.ce)('crown')} <b>Add Button Premium</b>\n\n` +
-            `Полный доступ открыт${until ? ` — до <b>${until}</b>` : ''}.\n` +
-            `<i>Ни лимитов, ни границ. Канал звучит так, как ты задумал.</i>\n\n` +
-            `${(0, emoji_1.ce)('handshake')} Хочешь дольше и бесплатно? Приглашай друзей — /ref`);
-        return;
-    }
+    const activeLine = premium && user?.premium_until
+        ? `${(0, emoji_1.ce)('crown')} Premium активен до <b>${new Date(user.premium_until).toLocaleDateString('ru-RU')}</b>\n\n`
+        : '';
     await sendPremiumMessage(chatId, `${(0, emoji_1.ce)('gem')} <b>Add Button Premium</b>\n\n` +
+        activeLine +
         `<i>Каналы, на которые хочется подписаться, выглядят дорого.</i>\n` +
         `Premium даёт твоим постам именно такой вид.\n\n` +
         `${(0, emoji_1.ce)('bolt')} <b>Без лимитов</b> — публикуй и оформляй сколько нужно\n` +

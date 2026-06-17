@@ -29,23 +29,15 @@ export async function handlePremiumCommand(userId: number, chatId: number): Prom
   const user = await getUser(userId);
   const premium = await isPremium(userId);
 
-  if (premium) {
-    const until = user?.premium_until
-      ? new Date(user.premium_until).toLocaleDateString('ru-RU')
-      : null;
-    await sendPremiumMessage(
-      chatId,
-      `${ce('crown')} <b>Add Button Premium</b>\n\n` +
-        `Полный доступ открыт${until ? ` — до <b>${until}</b>` : ''}.\n` +
-        `<i>Ни лимитов, ни границ. Канал звучит так, как ты задумал.</i>\n\n` +
-        `${ce('handshake')} Хочешь дольше и бесплатно? Приглашай друзей — /ref`,
-    );
-    return;
-  }
+  const activeLine =
+    premium && user?.premium_until
+      ? `${ce('crown')} Premium активен до <b>${new Date(user.premium_until).toLocaleDateString('ru-RU')}</b>\n\n`
+      : '';
 
   await sendPremiumMessage(
     chatId,
     `${ce('gem')} <b>Add Button Premium</b>\n\n` +
+      activeLine +
       `<i>Каналы, на которые хочется подписаться, выглядят дорого.</i>\n` +
       `Premium даёт твоим постам именно такой вид.\n\n` +
       `${ce('bolt')} <b>Без лимитов</b> — публикуй и оформляй сколько нужно\n` +
