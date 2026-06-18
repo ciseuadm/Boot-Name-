@@ -33,7 +33,7 @@ app.get('/banner.png', (_req, res) => {
 });
 
 app.get('/premium.png', (_req, res) => {
-  res.sendFile(path.join(process.cwd(), 'assets', 'avatars', 'premium-dark-neon.png'));
+  res.sendFile(path.join(process.cwd(), 'assets', 'premium-banner-dark-neon.png'));
 });
 
 // ── Telegram webhook ─────────────────────────────────────────────────────────

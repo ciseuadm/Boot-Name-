@@ -9,11 +9,11 @@ exports.handleSuccessfulPayment = handleSuccessfulPayment;
 const tg_1 = require("../tg");
 const db_1 = require("../db");
 const emoji_1 = require("../emoji");
-const PREMIUM_AVATAR_URL = tg_1.WEBHOOK_URL ? `${tg_1.WEBHOOK_URL}/premium.png` : '';
+const PREMIUM_BANNER_URL = tg_1.WEBHOOK_URL ? `${tg_1.WEBHOOK_URL}/premium.png` : '';
 async function sendPremiumMessage(chatId, text) {
-    if (PREMIUM_AVATAR_URL) {
+    if (PREMIUM_BANNER_URL) {
         try {
-            await (0, tg_1.sendPhoto)(chatId, PREMIUM_AVATAR_URL, text);
+            await (0, tg_1.sendPhoto)(chatId, PREMIUM_BANNER_URL, text);
             return;
         }
         catch {
