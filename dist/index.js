@@ -30,7 +30,8 @@ app.get('/banner.png', (_req, res) => {
     res.sendFile(path_1.default.join(process.cwd(), 'assets', 'banner-dark-neon.png'));
 });
 app.get('/premium.png', (_req, res) => {
-    res.sendFile(path_1.default.join(process.cwd(), 'assets', 'avatars', 'premium-dark-neon.png'));
+    // Horizontal banner (same aspect as /start), not the square avatar.
+    res.sendFile(path_1.default.join(process.cwd(), 'assets', 'banner-dark-neon.png'));
 });
 // ── Telegram webhook ─────────────────────────────────────────────────────────
 app.post(`/webhook/${tg_1.BOT_TOKEN}`, (req, res) => {

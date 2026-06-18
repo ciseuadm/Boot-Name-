@@ -1,4 +1,4 @@
-import { sendMessage, sendPhoto, answerCallback, WEBHOOK_URL, ADMIN_IDS, TgUpdate, TgMessage } from './tg';
+import { sendMessage, sendPhoto, answerCallback, WEBHOOK_URL, ADMIN_IDS, TgUpdate, TgMessage, getMessageText, messageHasPhoto } from './tg';
 import { ce } from './emoji';
 import {
   hit,
@@ -228,7 +228,7 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
       return;
     }
 
-    const rawText = (msg.text ?? '').trim();
+    const rawText = getMessageText(msg);
     if (isHeavyCommand(rawText)) {
       const heavy = hit(`heavy:${userId}`, HEAVY_LIMIT, HEAVY_WINDOW_MS);
       if (!heavy.allowed) {
@@ -250,20 +250,30 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
     return;
   }
 
-  const raw = (msg.text ?? '').trim();
+  const raw = getMessageText(msg);
 
-  // ── Admin: dump custom_emoji_id of any premium emoji in the message ──────────
-  if (ADMIN_IDS.includes(userId)) {
-    const ids = (msg.entities ?? [])
+  // ── Admin: dump custom_emoji_id (skip commands like /premium) ───────────────
+  if (ADMIN_IDS.includes(userId) && !raw.startsWith('/')) {
+    const entities = msg.entities ?? msg.caption_entities ?? [];
+    const ids = entities
       .filter(e => e.type === 'custom_emoji' && e.custom_emoji_id)
-      .map((e, i) => `${i + 1}. <code>${e.custom_emoji_id}</code> ${(msg.text ?? '').slice(e.offset, e.offset + e.length)}`);
+      .map((e, i) => `${i + 1}. <code>${e.custom_emoji_id}</code> ${raw.slice(e.offset, e.offset + e.length)}`);
     if (ids.length) {
       await sendMessage(chatId, `${ce('book')} custom_emoji_id:\n${ids.join('\n')}`);
       return;
     }
   }
 
-  if (!raw) return;
+  if (!raw) {
+    if (ADMIN_IDS.includes(userId) && getState(userId).step === 'cursor_mode' && messageHasPhoto(msg)) {
+      await sendMessage(
+        chatId,
+        `${ce('warning')} Фото без подписи не отправляется в Cursor.\n\n` +
+          `Напиши задачу текстом или добавь её как <b>подпись</b> к фото.`,
+      );
+    }
+    return;
+  }
 
   // ── Mandatory subscription gate ──────────────────────────────────────────────
   if (!ADMIN_IDS.includes(userId) && !(await isSubscribed(userId))) {

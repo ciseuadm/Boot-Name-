@@ -186,7 +186,7 @@ async function handleUpdate(update) {
             }
             return;
         }
-        const rawText = (msg.text ?? '').trim();
+        const rawText = (0, tg_1.getMessageText)(msg);
         if ((0, ratelimit_1.isHeavyCommand)(rawText)) {
             const heavy = (0, ratelimit_1.hit)(`heavy:${userId}`, ratelimit_1.HEAVY_LIMIT, ratelimit_1.HEAVY_WINDOW_MS);
             if (!heavy.allowed) {
@@ -202,19 +202,25 @@ async function handleUpdate(update) {
         await (0, premium_1.handleSuccessfulPayment)(msg);
         return;
     }
-    const raw = (msg.text ?? '').trim();
-    // ── Admin: dump custom_emoji_id of any premium emoji in the message ──────────
-    if (tg_1.ADMIN_IDS.includes(userId)) {
-        const ids = (msg.entities ?? [])
+    const raw = (0, tg_1.getMessageText)(msg);
+    // ── Admin: dump custom_emoji_id (skip commands like /premium) ───────────────
+    if (tg_1.ADMIN_IDS.includes(userId) && !raw.startsWith('/')) {
+        const entities = msg.entities ?? msg.caption_entities ?? [];
+        const ids = entities
             .filter(e => e.type === 'custom_emoji' && e.custom_emoji_id)
-            .map((e, i) => `${i + 1}. <code>${e.custom_emoji_id}</code> ${(msg.text ?? '').slice(e.offset, e.offset + e.length)}`);
+            .map((e, i) => `${i + 1}. <code>${e.custom_emoji_id}</code> ${raw.slice(e.offset, e.offset + e.length)}`);
         if (ids.length) {
             await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('book')} custom_emoji_id:\n${ids.join('\n')}`);
             return;
         }
     }
-    if (!raw)
+    if (!raw) {
+        if (tg_1.ADMIN_IDS.includes(userId) && getState(userId).step === 'cursor_mode' && (0, tg_1.messageHasPhoto)(msg)) {
+            await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('warning')} Фото без подписи не отправляется в Cursor.\n\n` +
+                `Напиши задачу текстом или добавь её как <b>подпись</b> к фото.`);
+        }
         return;
+    }
     // ── Mandatory subscription gate ──────────────────────────────────────────────
     if (!tg_1.ADMIN_IDS.includes(userId) && !(await (0, gate_1.isSubscribed)(userId))) {
         // Remember referral code so it can be credited once they subscribe

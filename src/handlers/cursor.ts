@@ -82,8 +82,7 @@ export async function handleCursorCommand(
   await sendMessage(
     chatId,
     `${ce('rocket')} <b>Связь с Cursor включена.</b>\n\n` +
-      `Пиши задачу обычным сообщением — отправлю её в Cursor (модель <b>Auto</b>, ` +
-      `Cursor сам выберет нужный ИИ). По готовности пришлю ответ сюда.\n\n` +
+      `Пиши задачу <b>текстом</b> (фото — только с подписью, картинка в Cursor не передаётся).\n\n` +
       (continuing
         ? `${ce('bulb')} Продолжаю прошлый диалог. /cursor_new — начать новый.\n`
         : `${ce('bulb')} Будет начат новый диалог.\n`) +
@@ -120,6 +119,7 @@ export async function handleCursorCancel(userId: number, chatId: number): Promis
   }
   try {
     await cancelCursorRun(cur.agentId, cur.runId);
+    inFlight.delete(userId);
     await sendMessage(chatId, `${ce('cross')} Отменяю текущую задачу Cursor…`);
   } catch (e) {
     await sendMessage(chatId, `${ce('warning')} Не удалось отменить: ${(e as Error).message}`);
@@ -156,13 +156,26 @@ export async function handleCursorTask(
       `${ce('alarm')} Работаю… пришлю ответ, как будет готово.`,
   );
 
+  void executeCursorTaskWork(userId, chatId, text, prevAgentId, taskId).catch(err => {
+    console.error('Cursor task failed:', err);
+    inFlight.delete(userId);
+    sendMessage(chatId, `${ce('cross')} Внутренняя ошибка Cursor-задачи.`).catch(() => {});
+  });
+}
+
+async function executeCursorTaskWork(
+  userId: number,
+  chatId: number,
+  text: string,
+  prevAgentId: string | null,
+  taskId: number,
+): Promise<void> {
   try {
     const outcome = await runCursorTask(text, prevAgentId, async (agentId, runId) => {
       session.set(userId, agentId);
       forceNew.delete(userId);
       inFlight.set(userId, { taskId, agentId, runId });
       await setCursorTaskRun(taskId, agentId, runId);
-      // Cloud agents don't appear in the IDE sidebar — send a direct link instead.
       await sendMessage(
         chatId,
         `${ce('link')} Смотреть агента в Cursor:\n${cursorAgentUrl(agentId)}\n\n` +

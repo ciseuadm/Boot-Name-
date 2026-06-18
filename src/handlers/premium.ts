@@ -3,15 +3,23 @@ import { getUser, grantPremium, recordPayment, isPremium, PREMIUM_MAX_BUTTONS, P
 import { ce } from '../emoji';
 import type { TgPreCheckoutQuery, TgMessage } from '../tg';
 
-const PREMIUM_AVATAR_URL = WEBHOOK_URL ? `${WEBHOOK_URL}/premium.png` : '';
+const PREMIUM_BANNER_URL = WEBHOOK_URL ? `${WEBHOOK_URL}/premium.png` : '';
+// Telegram photo captions are capped at 1024 chars; HTML tg-emoji tags eat a lot of budget.
+const PHOTO_CAPTION_MAX = 900;
 
 async function sendPremiumMessage(chatId: number, text: string): Promise<void> {
-  if (PREMIUM_AVATAR_URL) {
+  if (PREMIUM_BANNER_URL) {
     try {
-      await sendPhoto(chatId, PREMIUM_AVATAR_URL, text);
+      if (text.length <= PHOTO_CAPTION_MAX) {
+        await sendPhoto(chatId, PREMIUM_BANNER_URL, text);
+        return;
+      }
+      // Banner + separate text message when caption would exceed Telegram limit.
+      await sendPhoto(chatId, PREMIUM_BANNER_URL, `${ce('gem')} <b>Add Button Premium</b>`);
+      await sendMessage(chatId, text);
       return;
-    } catch {
-      // Fall back to plain text if photo delivery fails
+    } catch (e) {
+      console.error('premium sendPhoto failed:', e);
     }
   }
   await sendMessage(chatId, text);

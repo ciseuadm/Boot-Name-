@@ -59,8 +59,7 @@ async function handleCursorCommand(userId, chatId, states) {
     }
     const continuing = session.has(userId) && !forceNew.has(userId);
     await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('rocket')} <b>Связь с Cursor включена.</b>\n\n` +
-        `Пиши задачу обычным сообщением — отправлю её в Cursor (модель <b>Auto</b>, ` +
-        `Cursor сам выберет нужный ИИ). По готовности пришлю ответ сюда.\n\n` +
+        `Пиши задачу <b>текстом</b> (фото — только с подписью, картинка в Cursor не передаётся).\n\n` +
         (continuing
             ? `${(0, emoji_1.ce)('bulb')} Продолжаю прошлый диалог. /cursor_new — начать новый.\n`
             : `${(0, emoji_1.ce)('bulb')} Будет начат новый диалог.\n`) +
@@ -92,6 +91,7 @@ async function handleCursorCancel(userId, chatId) {
     }
     try {
         await (0, cursor_1.cancelCursorRun)(cur.agentId, cur.runId);
+        inFlight.delete(userId);
         await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('cross')} Отменяю текущую задачу Cursor…`);
     }
     catch (e) {
@@ -115,13 +115,19 @@ async function handleCursorTask(userId, chatId, text) {
     inFlight.set(userId, { taskId });
     await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('rocket')} Задача отправлена в Cursor${prevAgentId ? ' (продолжение диалога)' : ' (новый диалог)'}.\n` +
         `${(0, emoji_1.ce)('alarm')} Работаю… пришлю ответ, как будет готово.`);
+    void executeCursorTaskWork(userId, chatId, text, prevAgentId, taskId).catch(err => {
+        console.error('Cursor task failed:', err);
+        inFlight.delete(userId);
+        (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('cross')} Внутренняя ошибка Cursor-задачи.`).catch(() => { });
+    });
+}
+async function executeCursorTaskWork(userId, chatId, text, prevAgentId, taskId) {
     try {
         const outcome = await (0, cursor_1.runCursorTask)(text, prevAgentId, async (agentId, runId) => {
             session.set(userId, agentId);
             forceNew.delete(userId);
             inFlight.set(userId, { taskId, agentId, runId });
             await (0, db_1.setCursorTaskRun)(taskId, agentId, runId);
-            // Cloud agents don't appear in the IDE sidebar — send a direct link instead.
             await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('link')} Смотреть агента в Cursor:\n${(0, cursor_1.cursorAgentUrl)(agentId)}\n\n` +
                 `${(0, emoji_1.ce)('bulb')} Это <b>Cloud Agent</b> — он не появится в списке локальных чатов слева.`).catch(() => { });
         });

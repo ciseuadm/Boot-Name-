@@ -6,6 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.BOT_USERNAME = exports.ADMIN_IDS = exports.WEBHOOK_URL = exports.WEBHOOK_SECRET = exports.BOT_TOKEN = void 0;
 exports.escapeHtml = escapeHtml;
 exports.tg = tg;
+exports.getMessageText = getMessageText;
+exports.messageHasPhoto = messageHasPhoto;
 exports.sendMessage = sendMessage;
 exports.sendPlain = sendPlain;
 exports.notifyAdmins = notifyAdmins;
@@ -66,6 +68,12 @@ async function tg(method, body) {
     return data.result;
 }
 // ─── Message helpers ────────────────────────────────────────────────────────
+function getMessageText(msg) {
+    return (msg.text ?? msg.caption ?? '').trim();
+}
+function messageHasPhoto(msg) {
+    return (msg.photo?.length ?? 0) > 0;
+}
 async function sendMessage(chatId, text, extra = {}) {
     try {
         await tg('sendMessage', {

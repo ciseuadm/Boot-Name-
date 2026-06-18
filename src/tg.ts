@@ -58,6 +58,14 @@ export async function tg<T = unknown>(method: string, body: Record<string, unkno
 
 // ─── Message helpers ────────────────────────────────────────────────────────
 
+export function getMessageText(msg: TgMessage): string {
+  return (msg.text ?? msg.caption ?? '').trim();
+}
+
+export function messageHasPhoto(msg: TgMessage): boolean {
+  return (msg.photo?.length ?? 0) > 0;
+}
+
 export async function sendMessage(
   chatId: number,
   text: string,
@@ -281,7 +289,10 @@ export interface TgMessage {
   from?: TgUser;
   chat: { id: number };
   text?: string;
+  caption?: string;
+  photo?: Array<{ file_id: string; width: number; height: number }>;
   entities?: TgMessageEntity[];
+  caption_entities?: TgMessageEntity[];
   successful_payment?: {
     currency: string;
     total_amount: number;
