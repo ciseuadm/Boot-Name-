@@ -20,6 +20,10 @@ import {
   checkCursorRepoAccess,
   formatCursorError,
   cursorAgentUrl,
+  githubRepoOwner,
+  githubLoginLink,
+  wrapGithubUrl,
+  getCursorRepoUrl,
   CursorOutcome,
   CursorTaskPayload,
   CursorImageInput,
@@ -92,7 +96,38 @@ export async function handleCursorCommand(
       `\n<b>Управление:</b>\n` +
       `/cursor_new — новый диалог\n` +
       `/cursor_cancel — отменить текущую задачу\n` +
+      `/cursor_github — GitHub спрашивает аккаунт? настройка один раз\n` +
       `/cursor_off — выйти из режима`,
+  );
+}
+
+export async function handleCursorGithubSetup(userId: number, chatId: number): Promise<void> {
+  if (!isAdmin(userId)) return;
+
+  const owner = githubRepoOwner();
+  const repo = getCursorRepoUrl().replace('https://github.com/', '');
+  const cursorIntegrations = 'https://cursor.com/dashboard/integrations';
+  const installApp = githubLoginLink('/apps/cursor/installations/new', owner);
+  const repoSettings = githubLoginLink(`/${repo}/settings/installations`, owner);
+  const revokeOther = githubLoginLink('/settings/applications', 'socialmediacursor');
+
+  await sendMessage(
+    chatId,
+    `${ce('link')} <b>GitHub: убрать постоянный выбор аккаунта</b>\n\n` +
+      `<b>Почему всплывает окно:</b> в браузере одновременно залогинены ` +
+      `<code>socialmediacursor</code> и <code>${owner}</code>. ` +
+      `Репозиторий бота — у <code>${owner}</code>, а Cursor часто подключают через другой аккаунт.\n\n` +
+      `<b>Сделай один раз (5 минут):</b>\n\n` +
+      `1️⃣ <a href="${cursorIntegrations}">Cursor → Integrations → GitHub</a>\n` +
+      `   В окне «Select an account» жми <b>${owner}</b> → Continue\n\n` +
+      `2️⃣ <a href="${installApp}">Установить Cursor GitHub App</a> на аккаунт <b>${owner}</b>\n` +
+      `   Дай доступ к <code>${repo}</code>\n\n` +
+      `3️⃣ <a href="${repoSettings}">Проверить доступ приложений к репо</a>\n\n` +
+      `4️⃣ (рекомендуется) <a href="${revokeOther}">Отключить Cursor у socialmediacursor</a>\n` +
+      `   Authorized OAuth Apps → Cursor → Revoke\n` +
+      `   Или просто выйди из socialmediacursor в браузере (аватар → Sign out)\n\n` +
+      `${ce('check')} После этого GitHub перестанет спрашивать при каждом клике. ` +
+      `Проверь: /cursor`,
   );
 }
 
@@ -292,9 +327,10 @@ async function deliverOutcome(chatId: number, outcome: CursorOutcome): Promise<v
   await sendMessage(chatId, `${ce('check')} <b>Ответ от Cursor:</b>`);
   await sendPlain(chatId, outcome.result ?? '(агент не вернул текста)');
   if (outcome.prUrl) {
+    const prLink = wrapGithubUrl(outcome.prUrl);
     await sendMessage(
       chatId,
-      `${ce('link')} Pull request: ${outcome.prUrl}\n\n` +
+      `${ce('link')} Pull request: ${prLink}\n\n` +
         `${ce('warning')} <b>Важно:</b> бот на Railway обновляется только после merge PR в <code>main</code>. ` +
         `Пока PR открыт — в боте старый код.`,
     );

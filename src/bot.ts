@@ -50,6 +50,7 @@ import {
   handleCursorOff,
   handleCursorCancel,
   handleCursorMessage,
+  handleCursorGithubSetup,
 } from './handlers/cursor';
 
 // ─── State machine ──────────────────────────────────────────────────────────
@@ -412,6 +413,11 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
 
   if (raw === '/cursor_cancel') {
     await handleCursorCancel(userId, chatId);
+    return;
+  }
+
+  if (raw === '/cursor_github') {
+    await handleCursorGithubSetup(userId, chatId);
     return;
   }
 

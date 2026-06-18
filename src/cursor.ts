@@ -22,6 +22,7 @@ const REPO_URL = normalizeRepoUrl(
   process.env.CURSOR_REPO_URL ?? 'https://github.com/ciseuadm/Boot-Name-',
 );
 const REPO_REF = (process.env.CURSOR_REPO_REF ?? 'main').trim();
+const GITHUB_LOGIN = (process.env.GITHUB_LOGIN ?? '').trim();
 // Open a PR per task by default (review before merge). Set CURSOR_AUTO_PR=false
 // to let the agent work without raising a PR.
 const AUTO_PR = (process.env.CURSOR_AUTO_PR ?? 'true').toLowerCase() !== 'false';
@@ -37,6 +38,42 @@ export function normalizeRepoUrl(url: string): string {
 
 export function getCursorRepoUrl(): string {
   return REPO_URL;
+}
+
+/** GitHub username that owns CURSOR_REPO_URL (e.g. ciseuadm). */
+export function githubRepoOwner(repoUrl: string = REPO_URL): string {
+  try {
+    const parts = new URL(repoUrl).pathname.split('/').filter(Boolean);
+    return parts[0] ?? 'ciseuadm';
+  } catch {
+    return 'ciseuadm';
+  }
+}
+
+export function preferredGithubLogin(): string {
+  return GITHUB_LOGIN || githubRepoOwner();
+}
+
+/**
+ * GitHub link that opens already focused on the repo owner account.
+ * With multiple GitHub sessions in the browser this reduces (or removes)
+ * the repeated "Select an account" OAuth popup.
+ */
+export function githubLoginLink(path: string, login?: string): string {
+  const account = login ?? preferredGithubLogin();
+  const p = path.startsWith('/') ? path : `/${path}`;
+  return `https://github.com/login?login=${encodeURIComponent(account)}&return_to=${encodeURIComponent(p)}`;
+}
+
+/** Wraps a github.com URL so Telegram opens it under the correct account. */
+export function wrapGithubUrl(url: string): string {
+  if (!url.includes('github.com')) return url;
+  try {
+    const u = new URL(url);
+    return githubLoginLink(u.pathname + u.search + u.hash);
+  } catch {
+    return url;
+  }
 }
 
 /** Web URL to watch a cloud agent live (same account as CURSOR_API_KEY). */
@@ -69,11 +106,14 @@ export async function checkCursorRepoAccess(): Promise<CursorRepoCheck> {
       ok: false,
       message:
         `Cursor не видит репозиторий <code>${REPO_URL}</code> через GitHub-интеграцию.\n\n` +
-        `<b>Что сделать:</b>\n` +
-        `1. Открой <a href="https://cursor.com/dashboard/integrations">cursor.com/dashboard/integrations</a>\n` +
-        `2. Подключи GitHub (Install Cursor GitHub App)\n` +
-        `3. Выдай доступ к репозиторию <code>ciseuadm/Boot-Name-</code> (или ко всем)\n` +
-        `4. Подожди минуту и снова /cursor\n\n` +
+        `<b>Частая причина:</b> GitHub подключён через другой аккаунт (например <code>socialmediacursor</code>), ` +
+        `а репозиторий лежит у <code>${githubRepoOwner()}</code>.\n\n` +
+        `<b>Быстрое исправление:</b> /cursor_github — пошаговая настройка один раз.\n\n` +
+        `<b>Вручную:</b>\n` +
+        `1. <a href="https://cursor.com/dashboard/integrations">Integrations → GitHub</a>\n` +
+        `2. В окне «Select an account» выбирай <b>${githubRepoOwner()}</b>, не другой аккаунт\n` +
+        `3. Выдай доступ к <code>${githubRepoOwner()}/Boot-Name-</code>\n` +
+        `4. /cursor снова\n\n` +
         (preview
           ? `<b>Репозитории, которые Cursor уже видит:</b>\n${preview}`
           : `<b>Cursor пока не видит ни одного репозитория</b> — GitHub ещё не подключён.`),
@@ -99,10 +139,11 @@ export function formatCursorError(err: unknown): string {
       `${raw}\n\n` +
       `<b>Причина:</b> Cursor GitHub App не имеет доступа к этому репо/ветке.\n\n` +
       `<b>Исправление:</b>\n` +
-      `1. <a href="https://cursor.com/dashboard/integrations">Integrations → GitHub</a> — подключи приложение\n` +
-      `2. В GitHub → Settings → Applications → Cursor — дай доступ к <code>ciseuadm/Boot-Name-</code>\n` +
-      `3. Убедись, что ветка <code>${REPO_REF}</code> существует (она есть на GitHub)\n` +
-      `4. Перезапусти /cursor`
+      `1. /cursor_github — настройка аккаунта GitHub (один раз)\n` +
+      `2. <a href="https://cursor.com/dashboard/integrations">Integrations → GitHub</a>\n` +
+      `3. В GitHub → Settings → Applications → Cursor — доступ к <code>${githubRepoOwner()}/Boot-Name-</code>\n` +
+      `4. Ветка <code>${REPO_REF}</code> существует\n` +
+      `5. /cursor`
     );
   }
   if (/IntegrationNotConnected|integration.*not connected/i.test(raw)) {

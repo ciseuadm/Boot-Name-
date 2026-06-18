@@ -340,6 +340,10 @@ async function handleUpdate(update) {
         await (0, cursor_1.handleCursorCancel)(userId, chatId);
         return;
     }
+    if (raw === '/cursor_github') {
+        await (0, cursor_1.handleCursorGithubSetup)(userId, chatId);
+        return;
+    }
     // ── State machine ──────────────────────────────────────────────────────────
     if (state.step === 'waiting_link_add') {
         await (0, add_1.handleLinkAdd)(userId, chatId, raw, states);
