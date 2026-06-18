@@ -82,7 +82,8 @@ export async function handleCursorCommand(
   await sendMessage(
     chatId,
     `${ce('rocket')} <b>Связь с Cursor включена.</b>\n\n` +
-      `Пиши задачу <b>текстом</b> (фото — только с подписью, картинка в Cursor не передаётся).\n\n` +
+      `Пиши задачу <b>текстом</b> — отправлю в Cursor (модель Auto). ` +
+      `Фото только с подписью; сама картинка в Cursor не передаётся.\n\n` +
       (continuing
         ? `${ce('bulb')} Продолжаю прошлый диалог. /cursor_new — начать новый.\n`
         : `${ce('bulb')} Будет начат новый диалог.\n`) +

@@ -59,7 +59,8 @@ async function handleCursorCommand(userId, chatId, states) {
     }
     const continuing = session.has(userId) && !forceNew.has(userId);
     await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('rocket')} <b>Связь с Cursor включена.</b>\n\n` +
-        `Пиши задачу <b>текстом</b> (фото — только с подписью, картинка в Cursor не передаётся).\n\n` +
+        `Пиши задачу <b>текстом</b> — отправлю в Cursor (модель Auto). ` +
+        `Фото только с подписью; сама картинка в Cursor не передаётся.\n\n` +
         (continuing
             ? `${(0, emoji_1.ce)('bulb')} Продолжаю прошлый диалог. /cursor_new — начать новый.\n`
             : `${(0, emoji_1.ce)('bulb')} Будет начат новый диалог.\n`) +
