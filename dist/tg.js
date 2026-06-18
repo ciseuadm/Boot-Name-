@@ -8,6 +8,8 @@ exports.escapeHtml = escapeHtml;
 exports.tg = tg;
 exports.getMessageText = getMessageText;
 exports.messageHasPhoto = messageHasPhoto;
+exports.messageHasImage = messageHasImage;
+exports.downloadMessageImages = downloadMessageImages;
 exports.sendMessage = sendMessage;
 exports.sendPlain = sendPlain;
 exports.notifyAdmins = notifyAdmins;
@@ -73,6 +75,55 @@ function getMessageText(msg) {
 }
 function messageHasPhoto(msg) {
     return (msg.photo?.length ?? 0) > 0;
+}
+/** Photo attachment or image sent as a document (PNG/JPEG/WebP/GIF). */
+function messageHasImage(msg) {
+    if (messageHasPhoto(msg))
+        return true;
+    const mime = msg.document?.mime_type ?? '';
+    return mime.startsWith('image/');
+}
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+function guessMimeFromPath(filePath) {
+    const ext = filePath.split('.').pop()?.toLowerCase();
+    if (ext === 'png')
+        return 'image/png';
+    if (ext === 'webp')
+        return 'image/webp';
+    if (ext === 'gif')
+        return 'image/gif';
+    return 'image/jpeg';
+}
+/** Downloads image(s) from a Telegram message for forwarding to Cursor SDK. */
+async function downloadMessageImages(msg) {
+    if (msg.photo?.length) {
+        const photo = msg.photo[msg.photo.length - 1];
+        const img = await downloadTelegramFile(photo.file_id, photo.width, photo.height);
+        return img ? [img] : [];
+    }
+    if (msg.document?.mime_type?.startsWith('image/')) {
+        const img = await downloadTelegramFile(msg.document.file_id, undefined, undefined, msg.document.mime_type);
+        return img ? [img] : [];
+    }
+    return [];
+}
+async function downloadTelegramFile(fileId, width, height, mimeHint) {
+    const meta = await tg('getFile', { file_id: fileId });
+    if (meta.file_size && meta.file_size > MAX_IMAGE_BYTES)
+        return null;
+    const url = `https://api.telegram.org/file/bot${exports.BOT_TOKEN}/${meta.file_path}`;
+    const res = await (0, node_fetch_1.default)(url);
+    if (!res.ok)
+        return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > MAX_IMAGE_BYTES)
+        return null;
+    return {
+        data: buf.toString('base64'),
+        mimeType: mimeHint ?? guessMimeFromPath(meta.file_path),
+        width,
+        height,
+    };
 }
 async function sendMessage(chatId, text, extra = {}) {
     try {

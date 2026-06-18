@@ -15,12 +15,12 @@ exports.handleCursorCommand = handleCursorCommand;
 exports.handleCursorNew = handleCursorNew;
 exports.handleCursorOff = handleCursorOff;
 exports.handleCursorCancel = handleCursorCancel;
-exports.handleCursorTask = handleCursorTask;
+exports.handleCursorMessage = handleCursorMessage;
 exports.recoverCursorTasks = recoverCursorTasks;
 const tg_1 = require("../tg");
 const emoji_1 = require("../emoji");
-const db_1 = require("../db");
 const cursor_1 = require("../cursor");
+const db_1 = require("../db");
 // Active conversation per admin (agent id). Seeded from DB on first use so the
 // thread survives process restarts.
 const session = new Map();
@@ -59,8 +59,7 @@ async function handleCursorCommand(userId, chatId, states) {
     }
     const continuing = session.has(userId) && !forceNew.has(userId);
     await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('rocket')} <b>Связь с Cursor включена.</b>\n\n` +
-        `Пиши задачу <b>текстом</b> — отправлю в Cursor (модель Auto). ` +
-        `Фото только с подписью; сама картинка в Cursor не передаётся.\n\n` +
+        `Отправляй задачу <b>текстом</b> или <b>фото</b> (можно с подписью) — изображение попадёт в Cursor.\n\n` +
         (continuing
             ? `${(0, emoji_1.ce)('bulb')} Продолжаю прошлый диалог. /cursor_new — начать новый.\n`
             : `${(0, emoji_1.ce)('bulb')} Будет начат новый диалог.\n`) +
@@ -100,7 +99,9 @@ async function handleCursorCancel(userId, chatId) {
     }
 }
 // ── Task dispatch ───────────────────────────────────────────────────────────
-async function handleCursorTask(userId, chatId, text) {
+const PHOTO_ONLY_PROMPT = 'Пользователь отправил изображение без текста. Проанализируй его и выполни задачу, которую оно подразумевает.';
+/** Accepts text, photo, or photo+ caption and forwards everything to Cursor. */
+async function handleCursorMessage(userId, chatId, msg) {
     if (!isAdmin(userId))
         return;
     if (!(0, cursor_1.cursorConfigured)()) {
@@ -111,20 +112,38 @@ async function handleCursorTask(userId, chatId, text) {
         await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('alarm')} Cursor ещё работает над прошлой задачей. Дождись ответа или /cursor_cancel.`);
         return;
     }
+    const hasImage = (0, tg_1.messageHasImage)(msg);
+    const caption = (0, tg_1.getMessageText)(msg);
+    if (!caption && !hasImage)
+        return;
+    let images;
+    if (hasImage) {
+        images = await (0, tg_1.downloadMessageImages)(msg);
+        if (images.length === 0) {
+            await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('warning')} Не удалось загрузить изображение (макс. 5 МБ, форматы JPEG/PNG/WebP/GIF).`);
+            return;
+        }
+    }
+    const payload = {
+        text: caption || PHOTO_ONLY_PROMPT,
+        images,
+    };
     const prevAgentId = forceNew.has(userId) ? null : session.get(userId) ?? null;
-    const taskId = await (0, db_1.createCursorTask)(userId, chatId, text);
+    const logPrompt = payload.text + (images?.length ? ` [+${images.length} image]` : '');
+    const taskId = await (0, db_1.createCursorTask)(userId, chatId, logPrompt);
     inFlight.set(userId, { taskId });
-    await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('rocket')} Задача отправлена в Cursor${prevAgentId ? ' (продолжение диалога)' : ' (новый диалог)'}.\n` +
+    const imageNote = images?.length ? ` (+ ${images.length} фото)` : '';
+    await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('rocket')} Задача отправлена в Cursor${imageNote}${prevAgentId ? ' (продолжение диалога)' : ' (новый диалог)'}.\n` +
         `${(0, emoji_1.ce)('alarm')} Работаю… пришлю ответ, как будет готово.`);
-    void executeCursorTaskWork(userId, chatId, text, prevAgentId, taskId).catch(err => {
+    void executeCursorTaskWork(userId, chatId, payload, prevAgentId, taskId).catch(err => {
         console.error('Cursor task failed:', err);
         inFlight.delete(userId);
         (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('cross')} Внутренняя ошибка Cursor-задачи.`).catch(() => { });
     });
 }
-async function executeCursorTaskWork(userId, chatId, text, prevAgentId, taskId) {
+async function executeCursorTaskWork(userId, chatId, payload, prevAgentId, taskId) {
     try {
-        const outcome = await (0, cursor_1.runCursorTask)(text, prevAgentId, async (agentId, runId) => {
+        const outcome = await (0, cursor_1.runCursorTask)(payload, prevAgentId, async (agentId, runId) => {
             session.set(userId, agentId);
             forceNew.delete(userId);
             inFlight.set(userId, { taskId, agentId, runId });

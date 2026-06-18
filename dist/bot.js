@@ -215,11 +215,10 @@ async function handleUpdate(update) {
         }
     }
     if (!raw) {
-        if (tg_1.ADMIN_IDS.includes(userId) && getState(userId).step === 'cursor_mode' && (0, tg_1.messageHasPhoto)(msg)) {
-            await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('warning')} Фото без подписи не отправляется в Cursor.\n\n` +
-                `Напиши задачу текстом или добавь её как <b>подпись</b> к фото.`);
-        }
-        return;
+        const st = getState(userId);
+        const cursorMedia = tg_1.ADMIN_IDS.includes(userId) && st.step === 'cursor_mode' && (0, tg_1.messageHasImage)(msg);
+        if (!cursorMedia)
+            return;
     }
     // ── Mandatory subscription gate ──────────────────────────────────────────────
     if (!tg_1.ADMIN_IDS.includes(userId) && !(await (0, gate_1.isSubscribed)(userId))) {
@@ -387,7 +386,7 @@ async function handleUpdate(update) {
         return;
     }
     if (state.step === 'cursor_mode') {
-        await (0, cursor_1.handleCursorTask)(userId, chatId, raw);
+        await (0, cursor_1.handleCursorMessage)(userId, chatId, msg);
         return;
     }
     // ── Default ────────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { sendMessage, sendPhoto, answerCallback, WEBHOOK_URL, ADMIN_IDS, TgUpdate, TgMessage, getMessageText, messageHasPhoto } from './tg';
+import { sendMessage, sendPhoto, answerCallback, WEBHOOK_URL, ADMIN_IDS, TgUpdate, TgMessage, getMessageText, messageHasImage } from './tg';
 import { ce } from './emoji';
 import {
   hit,
@@ -49,7 +49,7 @@ import {
   handleCursorNew,
   handleCursorOff,
   handleCursorCancel,
-  handleCursorTask,
+  handleCursorMessage,
 } from './handlers/cursor';
 
 // ─── State machine ──────────────────────────────────────────────────────────
@@ -265,14 +265,10 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
   }
 
   if (!raw) {
-    if (ADMIN_IDS.includes(userId) && getState(userId).step === 'cursor_mode' && messageHasPhoto(msg)) {
-      await sendMessage(
-        chatId,
-        `${ce('warning')} Фото без подписи не отправляется в Cursor.\n\n` +
-          `Напиши задачу текстом или добавь её как <b>подпись</b> к фото.`,
-      );
-    }
-    return;
+    const st = getState(userId);
+    const cursorMedia =
+      ADMIN_IDS.includes(userId) && st.step === 'cursor_mode' && messageHasImage(msg);
+    if (!cursorMedia) return;
   }
 
   // ── Mandatory subscription gate ──────────────────────────────────────────────
@@ -477,7 +473,7 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
   }
 
   if (state.step === 'cursor_mode') {
-    await handleCursorTask(userId, chatId, raw);
+    await handleCursorMessage(userId, chatId, msg);
     return;
   }
 

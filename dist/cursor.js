@@ -136,13 +136,19 @@ function formatCursorError(err) {
 function firstPrUrl(result) {
     return result.git?.branches?.find(b => b.prUrl)?.prUrl;
 }
-/**
- * Runs one task. Creates a fresh cloud agent when `prevAgentId` is null,
- * otherwise resumes the existing conversation so follow-up fixes keep context.
- * `onStarted` is invoked with the agent/run IDs as soon as the run is dispatched
- * — persist them there so an answer can still be recovered after a restart.
- */
-async function runCursorTask(prompt, prevAgentId, onStarted) {
+function toAgentMessage(payload) {
+    if (!payload.images?.length)
+        return payload.text;
+    return {
+        text: payload.text,
+        images: payload.images.map(img => ({
+            data: img.data,
+            mimeType: img.mimeType,
+            ...(img.width && img.height ? { dimension: { width: img.width, height: img.height } } : {}),
+        })),
+    };
+}
+async function runCursorTask(payload, prevAgentId, onStarted) {
     const { Agent } = await sdk();
     const agent = prevAgentId
         ? await Agent.resume(prevAgentId, { apiKey: API_KEY })
@@ -157,7 +163,7 @@ async function runCursorTask(prompt, prevAgentId, onStarted) {
             },
         });
     try {
-        const run = await agent.send(prompt);
+        const run = await agent.send(toAgentMessage(payload));
         await onStarted(agent.agentId, run.id).catch(() => { });
         const result = await run.wait();
         return {

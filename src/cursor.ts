@@ -129,8 +129,32 @@ function firstPrUrl(result: RunResult): string | undefined {
  * `onStarted` is invoked with the agent/run IDs as soon as the run is dispatched
  * — persist them there so an answer can still be recovered after a restart.
  */
+export interface CursorImageInput {
+  data: string;
+  mimeType: string;
+  width?: number;
+  height?: number;
+}
+
+export interface CursorTaskPayload {
+  text: string;
+  images?: CursorImageInput[];
+}
+
+function toAgentMessage(payload: CursorTaskPayload): string | { text: string; images: Array<{ data: string; mimeType: string; dimension?: { width: number; height: number } }> } {
+  if (!payload.images?.length) return payload.text;
+  return {
+    text: payload.text,
+    images: payload.images.map(img => ({
+      data: img.data,
+      mimeType: img.mimeType,
+      ...(img.width && img.height ? { dimension: { width: img.width, height: img.height } } : {}),
+    })),
+  };
+}
+
 export async function runCursorTask(
-  prompt: string,
+  payload: CursorTaskPayload,
   prevAgentId: string | null,
   onStarted: (agentId: string, runId: string) => Promise<void>,
 ): Promise<CursorOutcome> {
@@ -149,7 +173,7 @@ export async function runCursorTask(
       });
 
   try {
-    const run = await agent.send(prompt);
+    const run = await agent.send(toAgentMessage(payload));
     await onStarted(agent.agentId, run.id).catch(() => {});
     const result = await run.wait();
     return {
