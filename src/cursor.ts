@@ -130,7 +130,10 @@ function firstPrUrl(result: RunResult): string | undefined {
  * — persist them there so an answer can still be recovered after a restart.
  */
 export interface CursorImageInput {
-  data: string;
+  /** Public HTTPS URL (preferred for Cloud Agents — they fetch the image). */
+  url?: string;
+  /** Base64 fallback when no public URL is available. */
+  data?: string;
   mimeType: string;
   width?: number;
   height?: number;
@@ -141,15 +144,24 @@ export interface CursorTaskPayload {
   images?: CursorImageInput[];
 }
 
-function toAgentMessage(payload: CursorTaskPayload): string | { text: string; images: Array<{ data: string; mimeType: string; dimension?: { width: number; height: number } }> } {
+function toAgentMessage(
+  payload: CursorTaskPayload,
+): string | { text: string; images: Array<{ url: string; dimension?: { width: number; height: number } } | { data: string; mimeType: string; dimension?: { width: number; height: number } }> } {
   if (!payload.images?.length) return payload.text;
   return {
     text: payload.text,
-    images: payload.images.map(img => ({
-      data: img.data,
-      mimeType: img.mimeType,
-      ...(img.width && img.height ? { dimension: { width: img.width, height: img.height } } : {}),
-    })),
+    images: payload.images.map(img => {
+      const dimension =
+        img.width && img.height ? { width: img.width, height: img.height } : undefined;
+      if (img.url) {
+        return dimension ? { url: img.url, dimension } : { url: img.url };
+      }
+      return {
+        data: img.data!,
+        mimeType: img.mimeType,
+        ...(dimension ? { dimension } : {}),
+      };
+    }),
   };
 }
 

@@ -141,11 +141,17 @@ function toAgentMessage(payload) {
         return payload.text;
     return {
         text: payload.text,
-        images: payload.images.map(img => ({
-            data: img.data,
-            mimeType: img.mimeType,
-            ...(img.width && img.height ? { dimension: { width: img.width, height: img.height } } : {}),
-        })),
+        images: payload.images.map(img => {
+            const dimension = img.width && img.height ? { width: img.width, height: img.height } : undefined;
+            if (img.url) {
+                return dimension ? { url: img.url, dimension } : { url: img.url };
+            }
+            return {
+                data: img.data,
+                mimeType: img.mimeType,
+                ...(dimension ? { dimension } : {}),
+            };
+        }),
     };
 }
 async function runCursorTask(payload, prevAgentId, onStarted) {

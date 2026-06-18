@@ -5,6 +5,7 @@ import { initDb } from './db';
 import { handleUpdate } from './bot';
 import { startScheduler } from './scheduler';
 import { recoverCursorTasks } from './handlers/cursor';
+import { getCursorRef } from './cursor-refs';
 
 const PORT = parseInt(process.env.PORT ?? '3000', 10);
 
@@ -35,6 +36,17 @@ app.get('/banner.png', (_req, res) => {
 app.get('/premium.png', (_req, res) => {
   // Horizontal banner (same aspect as /start), not the square avatar.
   res.sendFile(path.join(process.cwd(), 'assets', 'banner-dark-neon.png'));
+});
+
+// Short-lived image refs for Cursor Cloud Agents (Telegram → Cursor bridge).
+app.get('/cursor-ref/:token', (req, res) => {
+  const ref = getCursorRef(req.params.token);
+  if (!ref) {
+    res.sendStatus(404);
+    return;
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  res.type(ref.mimeType).send(ref.buffer);
 });
 
 // ── Telegram webhook ─────────────────────────────────────────────────────────

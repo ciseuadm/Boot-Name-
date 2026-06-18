@@ -119,7 +119,7 @@ async function downloadTelegramFile(fileId, width, height, mimeHint) {
     if (buf.length > MAX_IMAGE_BYTES)
         return null;
     return {
-        data: buf.toString('base64'),
+        buffer: buf,
         mimeType: mimeHint ?? guessMimeFromPath(meta.file_path),
         width,
         height,

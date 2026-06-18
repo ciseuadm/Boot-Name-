@@ -74,7 +74,7 @@ export function messageHasImage(msg: TgMessage): boolean {
 }
 
 export interface DownloadedImage {
-  data: string;
+  buffer: Buffer;
   mimeType: string;
   width?: number;
   height?: number;
@@ -126,7 +126,7 @@ async function downloadTelegramFile(
   if (buf.length > MAX_IMAGE_BYTES) return null;
 
   return {
-    data: buf.toString('base64'),
+    buffer: buf,
     mimeType: mimeHint ?? guessMimeFromPath(meta.file_path),
     width,
     height,

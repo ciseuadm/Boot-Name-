@@ -10,7 +10,7 @@
 // When a task finishes, its answer (and PR link, if any) is sent back to the
 // same chat with a clear "ответ от Cursor" signature.
 
-import { ADMIN_IDS, sendMessage, sendPlain, getMessageText, messageHasImage, downloadMessageImages, TgMessage } from '../tg';
+import { ADMIN_IDS, sendMessage, sendPlain, getMessageText, messageHasImage, downloadMessageImages, WEBHOOK_URL, TgMessage, DownloadedImage } from '../tg';
 import { ce } from '../emoji';
 import {
   cursorConfigured,
@@ -22,7 +22,9 @@ import {
   cursorAgentUrl,
   CursorOutcome,
   CursorTaskPayload,
+  CursorImageInput,
 } from '../cursor';
+import { storeCursorRef } from '../cursor-refs';
 import type { UserState } from '../bot';
 import {
   createCursorTask,
@@ -132,6 +134,52 @@ export async function handleCursorCancel(userId: number, chatId: number): Promis
 const PHOTO_ONLY_PROMPT =
   'Пользователь отправил изображение без текста. Проанализируй его и выполни задачу, которую оно подразумевает.';
 
+const UNSUPPORTED_IMAGE_MIME = new Set(['image/svg+xml']);
+
+function imageRefPrefix(count: number, first?: DownloadedImage): string {
+  const dims =
+    first?.width && first?.height ? ` (${first.width}×${first.height})` : '';
+  return (
+    `[Пользователь приложил ${count} изображение(я)${dims} как визуальный референс. ` +
+    `ОБЯЗАТЕЛЬНО используй прикреплённое изображение при выполнении задачи — это главный ориентир, не игнорируй его.]\n\n`
+  );
+}
+
+function formatImageAck(images: DownloadedImage[]): string {
+  const first = images[0]!;
+  const dims = first.width && first.height ? `${first.width}×${first.height}, ` : '';
+  const ext = first.mimeType.split('/')[1]?.toUpperCase() ?? 'IMAGE';
+  return `${ce('spark')} <b>Референс прикреплён:</b> ${dims}${ext} — отправлен в Cursor вместе с текстом.\n`;
+}
+
+function toCursorImages(downloaded: DownloadedImage[]): CursorImageInput[] {
+  return downloaded.map(img => {
+    if (WEBHOOK_URL) {
+      const token = storeCursorRef(img.buffer, img.mimeType);
+      return {
+        url: `${WEBHOOK_URL}/cursor-ref/${token}`,
+        mimeType: img.mimeType,
+        width: img.width,
+        height: img.height,
+      };
+    }
+    return {
+      data: img.buffer.toString('base64'),
+      mimeType: img.mimeType,
+      width: img.width,
+      height: img.height,
+    };
+  });
+}
+
+function buildCursorPayload(caption: string, downloaded: DownloadedImage[]): CursorTaskPayload {
+  const images = toCursorImages(downloaded);
+  const text =
+    (downloaded.length ? imageRefPrefix(downloaded.length, downloaded[0]) : '') +
+    (caption || PHOTO_ONLY_PROMPT);
+  return { text, images };
+}
+
 /** Accepts text, photo, or photo+ caption and forwards everything to Cursor. */
 export async function handleCursorMessage(
   userId: number,
@@ -155,32 +203,39 @@ export async function handleCursorMessage(
   const caption = getMessageText(msg);
   if (!caption && !hasImage) return;
 
-  let images: CursorTaskPayload['images'];
+  let downloaded: DownloadedImage[] = [];
   if (hasImage) {
-    images = await downloadMessageImages(msg);
-    if (images.length === 0) {
+    downloaded = await downloadMessageImages(msg);
+    if (downloaded.length === 0) {
       await sendMessage(
         chatId,
         `${ce('warning')} Не удалось загрузить изображение (макс. 5 МБ, форматы JPEG/PNG/WebP/GIF).`,
       );
       return;
     }
+    if (downloaded.some(img => UNSUPPORTED_IMAGE_MIME.has(img.mimeType))) {
+      await sendMessage(
+        chatId,
+        `${ce('warning')} SVG не поддерживается Cursor Cloud — отправь PNG или JPEG.`,
+      );
+      return;
+    }
   }
 
-  const payload: CursorTaskPayload = {
-    text: caption || PHOTO_ONLY_PROMPT,
-    images,
-  };
+  const payload = downloaded.length
+    ? buildCursorPayload(caption, downloaded)
+    : { text: caption };
 
   const prevAgentId = forceNew.has(userId) ? null : session.get(userId) ?? null;
-  const logPrompt = payload.text + (images?.length ? ` [+${images.length} image]` : '');
+  const logPrompt = payload.text + (downloaded.length ? ` [+${downloaded.length} image]` : '');
   const taskId = await createCursorTask(userId, chatId, logPrompt);
   inFlight.set(userId, { taskId });
 
-  const imageNote = images?.length ? ` (+ ${images.length} фото)` : '';
+  const imageAck = downloaded.length ? formatImageAck(downloaded) : '';
   await sendMessage(
     chatId,
-    `${ce('rocket')} Задача отправлена в Cursor${imageNote}${prevAgentId ? ' (продолжение диалога)' : ' (новый диалог)'}.\n` +
+    `${ce('rocket')} Задача отправлена в Cursor${prevAgentId ? ' (продолжение диалога)' : ' (новый диалог)'}.\n` +
+      imageAck +
       `${ce('alarm')} Работаю… пришлю ответ, как будет готово.`,
   );
 
