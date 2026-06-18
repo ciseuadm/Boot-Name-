@@ -58,6 +58,81 @@ export async function tg<T = unknown>(method: string, body: Record<string, unkno
 
 // ─── Message helpers ────────────────────────────────────────────────────────
 
+export function getMessageText(msg: TgMessage): string {
+  return (msg.text ?? msg.caption ?? '').trim();
+}
+
+export function messageHasPhoto(msg: TgMessage): boolean {
+  return (msg.photo?.length ?? 0) > 0;
+}
+
+/** Photo attachment or image sent as a document (PNG/JPEG/WebP/GIF). */
+export function messageHasImage(msg: TgMessage): boolean {
+  if (messageHasPhoto(msg)) return true;
+  const mime = msg.document?.mime_type ?? '';
+  return mime.startsWith('image/');
+}
+
+export interface DownloadedImage {
+  buffer: Buffer;
+  mimeType: string;
+  width?: number;
+  height?: number;
+}
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+function guessMimeFromPath(filePath: string): string {
+  const ext = filePath.split('.').pop()?.toLowerCase();
+  if (ext === 'png') return 'image/png';
+  if (ext === 'webp') return 'image/webp';
+  if (ext === 'gif') return 'image/gif';
+  return 'image/jpeg';
+}
+
+/** Downloads image(s) from a Telegram message for forwarding to Cursor SDK. */
+export async function downloadMessageImages(msg: TgMessage): Promise<DownloadedImage[]> {
+  if (msg.photo?.length) {
+    const photo = msg.photo[msg.photo.length - 1]!;
+    const img = await downloadTelegramFile(photo.file_id, photo.width, photo.height);
+    return img ? [img] : [];
+  }
+  if (msg.document?.mime_type?.startsWith('image/')) {
+    const img = await downloadTelegramFile(
+      msg.document.file_id,
+      undefined,
+      undefined,
+      msg.document.mime_type,
+    );
+    return img ? [img] : [];
+  }
+  return [];
+}
+
+async function downloadTelegramFile(
+  fileId: string,
+  width?: number,
+  height?: number,
+  mimeHint?: string,
+): Promise<DownloadedImage | null> {
+  const meta = await tg<{ file_path: string; file_size?: number }>('getFile', { file_id: fileId });
+  if (meta.file_size && meta.file_size > MAX_IMAGE_BYTES) return null;
+
+  const url = `https://api.telegram.org/file/bot${BOT_TOKEN}/${meta.file_path}`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length > MAX_IMAGE_BYTES) return null;
+
+  return {
+    buffer: buf,
+    mimeType: mimeHint ?? guessMimeFromPath(meta.file_path),
+    width,
+    height,
+  };
+}
+
 export async function sendMessage(
   chatId: number,
   text: string,
@@ -276,12 +351,30 @@ export interface TgMessageEntity {
   custom_emoji_id?: string;
 }
 
+export interface TgPhotoSize {
+  file_id: string;
+  width: number;
+  height: number;
+  file_size?: number;
+}
+
+export interface TgDocument {
+  file_id: string;
+  mime_type?: string;
+  file_name?: string;
+  file_size?: number;
+}
+
 export interface TgMessage {
   message_id: number;
   from?: TgUser;
   chat: { id: number };
   text?: string;
+  caption?: string;
+  photo?: TgPhotoSize[];
+  document?: TgDocument;
   entities?: TgMessageEntity[];
+  caption_entities?: TgMessageEntity[];
   successful_payment?: {
     currency: string;
     total_amount: number;

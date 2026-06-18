@@ -10,15 +10,8 @@
 // When a task finishes, its answer (and PR link, if any) is sent back to the
 // same chat with a clear "ответ от Cursor" signature.
 
-import { ADMIN_IDS, sendMessage, sendPlain } from '../tg';
+import { ADMIN_IDS, sendMessage, sendPlain, getMessageText, messageHasImage, downloadMessageImages, WEBHOOK_URL, TgMessage, DownloadedImage } from '../tg';
 import { ce } from '../emoji';
-import {
-  createCursorTask,
-  setCursorTaskRun,
-  finishCursorTask,
-  getRunningCursorTasks,
-  getLatestCursorAgent,
-} from '../db';
 import {
   cursorConfigured,
   runCursorTask,
@@ -26,9 +19,24 @@ import {
   cancelCursorRun,
   checkCursorRepoAccess,
   formatCursorError,
+  cursorAgentUrl,
+  githubRepoOwner,
+  githubLoginLink,
+  wrapGithubUrl,
+  getCursorRepoUrl,
   CursorOutcome,
+  CursorTaskPayload,
+  CursorImageInput,
 } from '../cursor';
+import { storeCursorRef } from '../cursor-refs';
 import type { UserState } from '../bot';
+import {
+  createCursorTask,
+  setCursorTaskRun,
+  finishCursorTask,
+  getRunningCursorTasks,
+  getLatestCursorAgent,
+} from '../db';
 
 // Active conversation per admin (agent id). Seeded from DB on first use so the
 // thread survives process restarts.
@@ -81,15 +89,45 @@ export async function handleCursorCommand(
   await sendMessage(
     chatId,
     `${ce('rocket')} <b>Связь с Cursor включена.</b>\n\n` +
-      `Пиши задачу обычным сообщением — отправлю её в Cursor (модель <b>Auto</b>, ` +
-      `Cursor сам выберет нужный ИИ). По готовности пришлю ответ сюда.\n\n` +
+      `Отправляй задачу <b>текстом</b> или <b>фото</b> (можно с подписью) — изображение попадёт в Cursor.\n\n` +
       (continuing
         ? `${ce('bulb')} Продолжаю прошлый диалог. /cursor_new — начать новый.\n`
         : `${ce('bulb')} Будет начат новый диалог.\n`) +
       `\n<b>Управление:</b>\n` +
       `/cursor_new — новый диалог\n` +
       `/cursor_cancel — отменить текущую задачу\n` +
+      `/cursor_github — GitHub спрашивает аккаунт? настройка один раз\n` +
       `/cursor_off — выйти из режима`,
+  );
+}
+
+export async function handleCursorGithubSetup(userId: number, chatId: number): Promise<void> {
+  if (!isAdmin(userId)) return;
+
+  const owner = githubRepoOwner();
+  const repo = getCursorRepoUrl().replace('https://github.com/', '');
+  const cursorIntegrations = 'https://cursor.com/dashboard/integrations';
+  const installApp = githubLoginLink('/apps/cursor/installations/new', owner);
+  const repoSettings = githubLoginLink(`/${repo}/settings/installations`, owner);
+  const revokeOther = githubLoginLink('/settings/applications', 'socialmediacursor');
+
+  await sendMessage(
+    chatId,
+    `${ce('link')} <b>GitHub: убрать постоянный выбор аккаунта</b>\n\n` +
+      `<b>Почему всплывает окно:</b> в браузере одновременно залогинены ` +
+      `<code>socialmediacursor</code> и <code>${owner}</code>. ` +
+      `Репозиторий бота — у <code>${owner}</code>, а Cursor часто подключают через другой аккаунт.\n\n` +
+      `<b>Сделай один раз (5 минут):</b>\n\n` +
+      `1️⃣ <a href="${cursorIntegrations}">Cursor → Integrations → GitHub</a>\n` +
+      `   В окне «Select an account» жми <b>${owner}</b> → Continue\n\n` +
+      `2️⃣ <a href="${installApp}">Установить Cursor GitHub App</a> на аккаунт <b>${owner}</b>\n` +
+      `   Дай доступ к <code>${repo}</code>\n\n` +
+      `3️⃣ <a href="${repoSettings}">Проверить доступ приложений к репо</a>\n\n` +
+      `4️⃣ (рекомендуется) <a href="${revokeOther}">Отключить Cursor у socialmediacursor</a>\n` +
+      `   Authorized OAuth Apps → Cursor → Revoke\n` +
+      `   Или просто выйди из socialmediacursor в браузере (аватар → Sign out)\n\n` +
+      `${ce('check')} После этого GitHub перестанет спрашивать при каждом клике. ` +
+      `Проверь: /cursor`,
   );
 }
 
@@ -119,6 +157,7 @@ export async function handleCursorCancel(userId: number, chatId: number): Promis
   }
   try {
     await cancelCursorRun(cur.agentId, cur.runId);
+    inFlight.delete(userId);
     await sendMessage(chatId, `${ce('cross')} Отменяю текущую задачу Cursor…`);
   } catch (e) {
     await sendMessage(chatId, `${ce('warning')} Не удалось отменить: ${(e as Error).message}`);
@@ -127,10 +166,60 @@ export async function handleCursorCancel(userId: number, chatId: number): Promis
 
 // ── Task dispatch ───────────────────────────────────────────────────────────
 
-export async function handleCursorTask(
+const PHOTO_ONLY_PROMPT =
+  'Пользователь отправил изображение без текста. Проанализируй его и выполни задачу, которую оно подразумевает.';
+
+const UNSUPPORTED_IMAGE_MIME = new Set(['image/svg+xml']);
+
+function imageRefPrefix(count: number, first?: DownloadedImage): string {
+  const dims =
+    first?.width && first?.height ? ` (${first.width}×${first.height})` : '';
+  return (
+    `[Пользователь приложил ${count} изображение(я)${dims} как визуальный референс. ` +
+    `ОБЯЗАТЕЛЬНО используй прикреплённое изображение при выполнении задачи — это главный ориентир, не игнорируй его.]\n\n`
+  );
+}
+
+function formatImageAck(images: DownloadedImage[]): string {
+  const first = images[0]!;
+  const dims = first.width && first.height ? `${first.width}×${first.height}, ` : '';
+  const ext = first.mimeType.split('/')[1]?.toUpperCase() ?? 'IMAGE';
+  return `${ce('spark')} <b>Референс прикреплён:</b> ${dims}${ext} — отправлен в Cursor вместе с текстом.\n`;
+}
+
+function toCursorImages(downloaded: DownloadedImage[]): CursorImageInput[] {
+  return downloaded.map(img => {
+    if (WEBHOOK_URL) {
+      const token = storeCursorRef(img.buffer, img.mimeType);
+      return {
+        url: `${WEBHOOK_URL}/cursor-ref/${token}`,
+        mimeType: img.mimeType,
+        width: img.width,
+        height: img.height,
+      };
+    }
+    return {
+      data: img.buffer.toString('base64'),
+      mimeType: img.mimeType,
+      width: img.width,
+      height: img.height,
+    };
+  });
+}
+
+function buildCursorPayload(caption: string, downloaded: DownloadedImage[]): CursorTaskPayload {
+  const images = toCursorImages(downloaded);
+  const text =
+    (downloaded.length ? imageRefPrefix(downloaded.length, downloaded[0]) : '') +
+    (caption || PHOTO_ONLY_PROMPT);
+  return { text, images };
+}
+
+/** Accepts text, photo, or photo+ caption and forwards everything to Cursor. */
+export async function handleCursorMessage(
   userId: number,
   chatId: number,
-  text: string,
+  msg: TgMessage,
 ): Promise<void> {
   if (!isAdmin(userId)) return;
   if (!cursorConfigured()) {
@@ -145,22 +234,71 @@ export async function handleCursorTask(
     return;
   }
 
+  const hasImage = messageHasImage(msg);
+  const caption = getMessageText(msg);
+  if (!caption && !hasImage) return;
+
+  let downloaded: DownloadedImage[] = [];
+  if (hasImage) {
+    downloaded = await downloadMessageImages(msg);
+    if (downloaded.length === 0) {
+      await sendMessage(
+        chatId,
+        `${ce('warning')} Не удалось загрузить изображение (макс. 5 МБ, форматы JPEG/PNG/WebP/GIF).`,
+      );
+      return;
+    }
+    if (downloaded.some(img => UNSUPPORTED_IMAGE_MIME.has(img.mimeType))) {
+      await sendMessage(
+        chatId,
+        `${ce('warning')} SVG не поддерживается Cursor Cloud — отправь PNG или JPEG.`,
+      );
+      return;
+    }
+  }
+
+  const payload = downloaded.length
+    ? buildCursorPayload(caption, downloaded)
+    : { text: caption };
+
   const prevAgentId = forceNew.has(userId) ? null : session.get(userId) ?? null;
-  const taskId = await createCursorTask(userId, chatId, text);
+  const logPrompt = payload.text + (downloaded.length ? ` [+${downloaded.length} image]` : '');
+  const taskId = await createCursorTask(userId, chatId, logPrompt);
   inFlight.set(userId, { taskId });
 
+  const imageAck = downloaded.length ? formatImageAck(downloaded) : '';
   await sendMessage(
     chatId,
     `${ce('rocket')} Задача отправлена в Cursor${prevAgentId ? ' (продолжение диалога)' : ' (новый диалог)'}.\n` +
+      imageAck +
       `${ce('alarm')} Работаю… пришлю ответ, как будет готово.`,
   );
 
+  void executeCursorTaskWork(userId, chatId, payload, prevAgentId, taskId).catch(err => {
+    console.error('Cursor task failed:', err);
+    inFlight.delete(userId);
+    sendMessage(chatId, `${ce('cross')} Внутренняя ошибка Cursor-задачи.`).catch(() => {});
+  });
+}
+
+async function executeCursorTaskWork(
+  userId: number,
+  chatId: number,
+  payload: CursorTaskPayload,
+  prevAgentId: string | null,
+  taskId: number,
+): Promise<void> {
   try {
-    const outcome = await runCursorTask(text, prevAgentId, async (agentId, runId) => {
+    const outcome = await runCursorTask(payload, prevAgentId, async (agentId, runId) => {
       session.set(userId, agentId);
       forceNew.delete(userId);
       inFlight.set(userId, { taskId, agentId, runId });
       await setCursorTaskRun(taskId, agentId, runId);
+      await sendMessage(
+        chatId,
+        `${ce('link')} Смотреть агента в Cursor:\n${cursorAgentUrl(agentId)}\n\n` +
+          `${ce('bulb')} Это <b>Cloud Agent</b> — он не появится в списке локальных чатов слева.`,
+      ).catch(() => {});
     });
 
     await finishCursorTask(taskId, outcome.status, outcome.result ?? null, outcome.prUrl ?? null);
@@ -189,7 +327,13 @@ async function deliverOutcome(chatId: number, outcome: CursorOutcome): Promise<v
   await sendMessage(chatId, `${ce('check')} <b>Ответ от Cursor:</b>`);
   await sendPlain(chatId, outcome.result ?? '(агент не вернул текста)');
   if (outcome.prUrl) {
-    await sendMessage(chatId, `${ce('link')} Pull request: ${outcome.prUrl}`);
+    const prLink = wrapGithubUrl(outcome.prUrl);
+    await sendMessage(
+      chatId,
+      `${ce('link')} Pull request: ${prLink}\n\n` +
+        `${ce('warning')} <b>Важно:</b> бот на Railway обновляется только после merge PR в <code>main</code>. ` +
+        `Пока PR открыт — в боте старый код.`,
+    );
   }
 }
 

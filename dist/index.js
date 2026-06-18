@@ -10,6 +10,7 @@ const db_1 = require("./db");
 const bot_1 = require("./bot");
 const scheduler_1 = require("./scheduler");
 const cursor_1 = require("./handlers/cursor");
+const cursor_refs_1 = require("./cursor-refs");
 const PORT = parseInt(process.env.PORT ?? '3000', 10);
 const app = (0, express_1.default)();
 app.disable('x-powered-by');
@@ -23,14 +24,36 @@ app.use((_req, res, next) => {
     next();
 });
 // ── Bot images (used in /start welcome) ──────────────────────────────────────
+function sendBotImage(res, ...segments) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.sendFile(path_1.default.join(process.cwd(), ...segments));
+}
 app.get('/avatar.png', (_req, res) => {
-    res.sendFile(path_1.default.join(process.cwd(), 'assets', 'avatars', 'avatar-2-dark-neon.png'));
+    sendBotImage(res, 'assets', 'avatars', 'avatar-2-dark-neon.png');
 });
 app.get('/banner.png', (_req, res) => {
-    res.sendFile(path_1.default.join(process.cwd(), 'assets', 'banner-dark-neon.png'));
+    sendBotImage(res, 'assets', 'banner-dark-neon.png');
+});
+// Vertical premium card for /premium (banner + copy in one image).
+app.get('/premium-card.png', (_req, res) => {
+    sendBotImage(res, 'assets', 'premium-card-dark-neon.png');
+});
+// Horizontal premium banner. Legacy paths keep Telegram cache bust working.
+app.get('/premium-banner.png', (_req, res) => {
+    sendBotImage(res, 'assets', 'premium-banner-dark-neon.png');
 });
 app.get('/premium.png', (_req, res) => {
-    res.sendFile(path_1.default.join(process.cwd(), 'assets', 'premium-banner-dark-neon.png'));
+    sendBotImage(res, 'assets', 'premium-banner-dark-neon.png');
+});
+// Short-lived image refs for Cursor Cloud Agents (Telegram → Cursor bridge).
+app.get('/cursor-ref/:token', (req, res) => {
+    const ref = (0, cursor_refs_1.getCursorRef)(req.params.token);
+    if (!ref) {
+        res.sendStatus(404);
+        return;
+    }
+    res.setHeader('Cache-Control', 'no-store');
+    res.type(ref.mimeType).send(ref.buffer);
 });
 // ── Telegram webhook ─────────────────────────────────────────────────────────
 app.post(`/webhook/${tg_1.BOT_TOKEN}`, (req, res) => {

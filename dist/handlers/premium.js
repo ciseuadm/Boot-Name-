@@ -9,40 +9,31 @@ exports.handleSuccessfulPayment = handleSuccessfulPayment;
 const tg_1 = require("../tg");
 const db_1 = require("../db");
 const emoji_1 = require("../emoji");
-const PREMIUM_BANNER_URL = tg_1.WEBHOOK_URL ? `${tg_1.WEBHOOK_URL}/premium.png` : '';
-async function sendPremiumMessage(chatId, text) {
-    if (PREMIUM_BANNER_URL) {
+// Vertical card with banner + copy baked in. Distinct path avoids Telegram photo cache.
+const PREMIUM_CARD_URL = tg_1.WEBHOOK_URL ? `${tg_1.WEBHOOK_URL}/premium-card.png` : '';
+async function sendPremiumMessage(chatId, fallbackText, caption) {
+    if (PREMIUM_CARD_URL) {
         try {
-            await (0, tg_1.sendPhoto)(chatId, PREMIUM_BANNER_URL, text);
+            await (0, tg_1.sendPhoto)(chatId, PREMIUM_CARD_URL, caption);
             return;
         }
-        catch {
-            // Fall back to plain text if photo delivery fails
+        catch (e) {
+            console.error('premium sendPhoto failed:', e);
         }
     }
-    await (0, tg_1.sendMessage)(chatId, text);
+    await (0, tg_1.sendMessage)(chatId, fallbackText);
 }
 // Stars pricing
 exports.PLANS = {
     monthly: { stars: 149, months: 1, label: '1 месяц', key: 'premium_monthly' },
     yearly: { stars: 990, months: 12, label: '12 месяцев (скидка 45%)', key: 'premium_yearly' },
 };
-// ── /premium command ─────────────────────────────────────────────────────────
-async function handlePremiumCommand(userId, chatId) {
-    const user = await (0, db_1.getUser)(userId);
-    const premium = await (0, db_1.isPremium)(userId);
-    if (premium) {
-        const until = user?.premium_until
-            ? new Date(user.premium_until).toLocaleDateString('ru-RU')
-            : null;
-        await sendPremiumMessage(chatId, `${(0, emoji_1.ce)('crown')} <b>Add Button Premium</b>\n\n` +
-            `Полный доступ открыт${until ? ` — до <b>${until}</b>` : ''}.\n` +
-            `<i>Ни лимитов, ни границ. Канал звучит так, как ты задумал.</i>\n\n` +
-            `${(0, emoji_1.ce)('handshake')} Хочешь дольше и бесплатно? Приглашай друзей — /ref`);
-        return;
-    }
-    await sendPremiumMessage(chatId, `${(0, emoji_1.ce)('gem')} <b>Add Button Premium</b>\n\n` +
-        `<i>Каналы, на которые хочется подписаться, выглядят дорого.</i>\n` +
+function buildPremiumText(user, premium) {
+    const header = `${(0, emoji_1.ce)('gem')} <b>Add Button Premium</b>` +
+        (premium && user?.premium_until
+            ? `\n\n${(0, emoji_1.ce)('crown')} Premium активен до <b>${new Date(user.premium_until).toLocaleDateString('ru-RU')}</b>`
+            : '');
+    const body = `<i>Каналы, на которые хочется подписаться, выглядят дорого.</i>\n` +
         `Premium даёт твоим постам именно такой вид.\n\n` +
         `${(0, emoji_1.ce)('bolt')} <b>Без лимитов</b> — публикуй и оформляй сколько нужно\n` +
         `${(0, emoji_1.ce)('puzzle')} <b>Меню и сетки</b> — до ${db_1.PREMIUM_MAX_BUTTONS} кнопок под постом\n` +
@@ -50,7 +41,19 @@ async function handlePremiumCommand(userId, chatId) {
         `${(0, emoji_1.ce)('alarm')} <b>Кнопки по расписанию</b> — выходят точно вовремя\n\n` +
         `${(0, emoji_1.ce)('star')} <b>${exports.PLANS.monthly.stars}</b> Stars / месяц — /buy_monthly\n` +
         `${(0, emoji_1.ce)('fire')} <b>${exports.PLANS.yearly.stars}</b> Stars / год · выгода 45% — /buy_yearly\n\n` +
-        `${(0, emoji_1.ce)('handshake')} Или получи Premium бесплатно — за друзей: /ref`);
+        `${(0, emoji_1.ce)('handshake')} Или получи Premium бесплатно — за друзей: /ref`;
+    return `${header}\n\n${body}`;
+}
+// ── /premium command ─────────────────────────────────────────────────────────
+async function handlePremiumCommand(userId, chatId) {
+    const user = await (0, db_1.getUser)(userId);
+    const premium = await (0, db_1.isPremium)(userId);
+    const text = buildPremiumText(user, premium);
+    // Card already contains the pitch copy; caption only adds the dynamic active line.
+    const caption = premium && user?.premium_until
+        ? `${(0, emoji_1.ce)('crown')} Premium активен до <b>${new Date(user.premium_until).toLocaleDateString('ru-RU')}</b>`
+        : '';
+    await sendPremiumMessage(chatId, text, caption);
 }
 // ── /buy_monthly / /buy_yearly ────────────────────────────────────────────────
 async function handleBuyMonthly(userId, chatId) {

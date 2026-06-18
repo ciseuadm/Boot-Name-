@@ -3,18 +3,23 @@ import { getUser, grantPremium, recordPayment, isPremium, PREMIUM_MAX_BUTTONS, P
 import { ce } from '../emoji';
 import type { TgPreCheckoutQuery, TgMessage } from '../tg';
 
-const PREMIUM_BANNER_URL = WEBHOOK_URL ? `${WEBHOOK_URL}/premium.png` : '';
+// Vertical card with banner + copy baked in. Distinct path avoids Telegram photo cache.
+const PREMIUM_CARD_URL = WEBHOOK_URL ? `${WEBHOOK_URL}/premium-card.png` : '';
 
-async function sendPremiumMessage(chatId: number, text: string): Promise<void> {
-  if (PREMIUM_BANNER_URL) {
+async function sendPremiumMessage(
+  chatId: number,
+  fallbackText: string,
+  caption: string,
+): Promise<void> {
+  if (PREMIUM_CARD_URL) {
     try {
-      await sendPhoto(chatId, PREMIUM_BANNER_URL, text);
+      await sendPhoto(chatId, PREMIUM_CARD_URL, caption);
       return;
-    } catch {
-      // Fall back to plain text if photo delivery fails
+    } catch (e) {
+      console.error('premium sendPhoto failed:', e);
     }
   }
-  await sendMessage(chatId, text);
+  await sendMessage(chatId, fallbackText);
 }
 
 // Stars pricing
@@ -23,39 +28,39 @@ export const PLANS = {
   yearly:  { stars: 990, months: 12, label: '12 месяцев (скидка 45%)', key: 'premium_yearly' },
 } as const;
 
+function buildPremiumText(user: Awaited<ReturnType<typeof getUser>>, premium: boolean): string {
+  const header =
+    `${ce('gem')} <b>Add Button Premium</b>` +
+    (premium && user?.premium_until
+      ? `\n\n${ce('crown')} Premium активен до <b>${new Date(user.premium_until).toLocaleDateString('ru-RU')}</b>`
+      : '');
+
+  const body =
+    `<i>Каналы, на которые хочется подписаться, выглядят дорого.</i>\n` +
+    `Premium даёт твоим постам именно такой вид.\n\n` +
+    `${ce('bolt')} <b>Без лимитов</b> — публикуй и оформляй сколько нужно\n` +
+    `${ce('puzzle')} <b>Меню и сетки</b> — до ${PREMIUM_MAX_BUTTONS} кнопок под постом\n` +
+    `${ce('dividers')} <b>Шаблоны в один тап</b> — фирменный стиль за секунду\n` +
+    `${ce('alarm')} <b>Кнопки по расписанию</b> — выходят точно вовремя\n\n` +
+    `${ce('star')} <b>${PLANS.monthly.stars}</b> Stars / месяц — /buy_monthly\n` +
+    `${ce('fire')} <b>${PLANS.yearly.stars}</b> Stars / год · выгода 45% — /buy_yearly\n\n` +
+    `${ce('handshake')} Или получи Premium бесплатно — за друзей: /ref`;
+
+  return `${header}\n\n${body}`;
+}
+
 // ── /premium command ─────────────────────────────────────────────────────────
 
 export async function handlePremiumCommand(userId: number, chatId: number): Promise<void> {
   const user = await getUser(userId);
   const premium = await isPremium(userId);
-
-  if (premium) {
-    const until = user?.premium_until
-      ? new Date(user.premium_until).toLocaleDateString('ru-RU')
-      : null;
-    await sendPremiumMessage(
-      chatId,
-      `${ce('crown')} <b>Add Button Premium</b>\n\n` +
-        `Полный доступ открыт${until ? ` — до <b>${until}</b>` : ''}.\n` +
-        `<i>Ни лимитов, ни границ. Канал звучит так, как ты задумал.</i>\n\n` +
-        `${ce('handshake')} Хочешь дольше и бесплатно? Приглашай друзей — /ref`,
-    );
-    return;
-  }
-
-  await sendPremiumMessage(
-    chatId,
-    `${ce('gem')} <b>Add Button Premium</b>\n\n` +
-      `<i>Каналы, на которые хочется подписаться, выглядят дорого.</i>\n` +
-      `Premium даёт твоим постам именно такой вид.\n\n` +
-      `${ce('bolt')} <b>Без лимитов</b> — публикуй и оформляй сколько нужно\n` +
-      `${ce('puzzle')} <b>Меню и сетки</b> — до ${PREMIUM_MAX_BUTTONS} кнопок под постом\n` +
-      `${ce('dividers')} <b>Шаблоны в один тап</b> — фирменный стиль за секунду\n` +
-      `${ce('alarm')} <b>Кнопки по расписанию</b> — выходят точно вовремя\n\n` +
-      `${ce('star')} <b>${PLANS.monthly.stars}</b> Stars / месяц — /buy_monthly\n` +
-      `${ce('fire')} <b>${PLANS.yearly.stars}</b> Stars / год · выгода 45% — /buy_yearly\n\n` +
-      `${ce('handshake')} Или получи Premium бесплатно — за друзей: /ref`,
-  );
+  const text = buildPremiumText(user, premium);
+  // Card already contains the pitch copy; caption only adds the dynamic active line.
+  const caption =
+    premium && user?.premium_until
+      ? `${ce('crown')} Premium активен до <b>${new Date(user.premium_until).toLocaleDateString('ru-RU')}</b>`
+      : '';
+  await sendPremiumMessage(chatId, text, caption);
 }
 
 // ── /buy_monthly / /buy_yearly ────────────────────────────────────────────────

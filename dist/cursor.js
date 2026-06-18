@@ -45,6 +45,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.cursorConfigured = cursorConfigured;
 exports.normalizeRepoUrl = normalizeRepoUrl;
 exports.getCursorRepoUrl = getCursorRepoUrl;
+exports.githubRepoOwner = githubRepoOwner;
+exports.preferredGithubLogin = preferredGithubLogin;
+exports.githubLoginLink = githubLoginLink;
+exports.wrapGithubUrl = wrapGithubUrl;
+exports.cursorAgentUrl = cursorAgentUrl;
 exports.checkCursorRepoAccess = checkCursorRepoAccess;
 exports.formatCursorError = formatCursorError;
 exports.runCursorTask = runCursorTask;
@@ -59,6 +64,7 @@ const API_KEY = (process.env.CURSOR_API_KEY ?? '').trim();
 const MODEL_ID = (process.env.CURSOR_MODEL ?? 'auto').trim() || 'auto';
 const REPO_URL = normalizeRepoUrl(process.env.CURSOR_REPO_URL ?? 'https://github.com/ciseuadm/Boot-Name-');
 const REPO_REF = (process.env.CURSOR_REPO_REF ?? 'main').trim();
+const GITHUB_LOGIN = (process.env.GITHUB_LOGIN ?? '').trim();
 // Open a PR per task by default (review before merge). Set CURSOR_AUTO_PR=false
 // to let the agent work without raising a PR.
 const AUTO_PR = (process.env.CURSOR_AUTO_PR ?? 'true').toLowerCase() !== 'false';
@@ -71,6 +77,45 @@ function normalizeRepoUrl(url) {
 }
 function getCursorRepoUrl() {
     return REPO_URL;
+}
+/** GitHub username that owns CURSOR_REPO_URL (e.g. ciseuadm). */
+function githubRepoOwner(repoUrl = REPO_URL) {
+    try {
+        const parts = new URL(repoUrl).pathname.split('/').filter(Boolean);
+        return parts[0] ?? 'ciseuadm';
+    }
+    catch {
+        return 'ciseuadm';
+    }
+}
+function preferredGithubLogin() {
+    return GITHUB_LOGIN || githubRepoOwner();
+}
+/**
+ * GitHub link that opens already focused on the repo owner account.
+ * With multiple GitHub sessions in the browser this reduces (or removes)
+ * the repeated "Select an account" OAuth popup.
+ */
+function githubLoginLink(path, login) {
+    const account = login ?? preferredGithubLogin();
+    const p = path.startsWith('/') ? path : `/${path}`;
+    return `https://github.com/login?login=${encodeURIComponent(account)}&return_to=${encodeURIComponent(p)}`;
+}
+/** Wraps a github.com URL so Telegram opens it under the correct account. */
+function wrapGithubUrl(url) {
+    if (!url.includes('github.com'))
+        return url;
+    try {
+        const u = new URL(url);
+        return githubLoginLink(u.pathname + u.search + u.hash);
+    }
+    catch {
+        return url;
+    }
+}
+/** Web URL to watch a cloud agent live (same account as CURSOR_API_KEY). */
+function cursorAgentUrl(agentId) {
+    return `https://cursor.com/agents/${agentId}`;
 }
 /**
  * Lists repos the API key can actually reach via the Cursor ↔ GitHub integration.
@@ -90,11 +135,14 @@ async function checkCursorRepoAccess() {
         return {
             ok: false,
             message: `Cursor не видит репозиторий <code>${REPO_URL}</code> через GitHub-интеграцию.\n\n` +
-                `<b>Что сделать:</b>\n` +
-                `1. Открой <a href="https://cursor.com/dashboard/integrations">cursor.com/dashboard/integrations</a>\n` +
-                `2. Подключи GitHub (Install Cursor GitHub App)\n` +
-                `3. Выдай доступ к репозиторию <code>ciseuadm/Boot-Name-</code> (или ко всем)\n` +
-                `4. Подожди минуту и снова /cursor\n\n` +
+                `<b>Частая причина:</b> GitHub подключён через другой аккаунт (например <code>socialmediacursor</code>), ` +
+                `а репозиторий лежит у <code>${githubRepoOwner()}</code>.\n\n` +
+                `<b>Быстрое исправление:</b> /cursor_github — пошаговая настройка один раз.\n\n` +
+                `<b>Вручную:</b>\n` +
+                `1. <a href="https://cursor.com/dashboard/integrations">Integrations → GitHub</a>\n` +
+                `2. В окне «Select an account» выбирай <b>${githubRepoOwner()}</b>, не другой аккаунт\n` +
+                `3. Выдай доступ к <code>${githubRepoOwner()}/Boot-Name-</code>\n` +
+                `4. /cursor снова\n\n` +
                 (preview
                     ? `<b>Репозитории, которые Cursor уже видит:</b>\n${preview}`
                     : `<b>Cursor пока не видит ни одного репозитория</b> — GitHub ещё не подключён.`),
@@ -118,10 +166,11 @@ function formatCursorError(err) {
         return (`${raw}\n\n` +
             `<b>Причина:</b> Cursor GitHub App не имеет доступа к этому репо/ветке.\n\n` +
             `<b>Исправление:</b>\n` +
-            `1. <a href="https://cursor.com/dashboard/integrations">Integrations → GitHub</a> — подключи приложение\n` +
-            `2. В GitHub → Settings → Applications → Cursor — дай доступ к <code>ciseuadm/Boot-Name-</code>\n` +
-            `3. Убедись, что ветка <code>${REPO_REF}</code> существует (она есть на GitHub)\n` +
-            `4. Перезапусти /cursor`);
+            `1. /cursor_github — настройка аккаунта GitHub (один раз)\n` +
+            `2. <a href="https://cursor.com/dashboard/integrations">Integrations → GitHub</a>\n` +
+            `3. В GitHub → Settings → Applications → Cursor — доступ к <code>${githubRepoOwner()}/Boot-Name-</code>\n` +
+            `4. Ветка <code>${REPO_REF}</code> существует\n` +
+            `5. /cursor`);
     }
     if (/IntegrationNotConnected|integration.*not connected/i.test(raw)) {
         return `${raw}\n\nПодключи GitHub на cursor.com/dashboard/integrations.`;
@@ -131,13 +180,25 @@ function formatCursorError(err) {
 function firstPrUrl(result) {
     return result.git?.branches?.find(b => b.prUrl)?.prUrl;
 }
-/**
- * Runs one task. Creates a fresh cloud agent when `prevAgentId` is null,
- * otherwise resumes the existing conversation so follow-up fixes keep context.
- * `onStarted` is invoked with the agent/run IDs as soon as the run is dispatched
- * — persist them there so an answer can still be recovered after a restart.
- */
-async function runCursorTask(prompt, prevAgentId, onStarted) {
+function toAgentMessage(payload) {
+    if (!payload.images?.length)
+        return payload.text;
+    return {
+        text: payload.text,
+        images: payload.images.map(img => {
+            const dimension = img.width && img.height ? { width: img.width, height: img.height } : undefined;
+            if (img.url) {
+                return dimension ? { url: img.url, dimension } : { url: img.url };
+            }
+            return {
+                data: img.data,
+                mimeType: img.mimeType,
+                ...(dimension ? { dimension } : {}),
+            };
+        }),
+    };
+}
+async function runCursorTask(payload, prevAgentId, onStarted) {
     const { Agent } = await sdk();
     const agent = prevAgentId
         ? await Agent.resume(prevAgentId, { apiKey: API_KEY })
@@ -152,7 +213,7 @@ async function runCursorTask(prompt, prevAgentId, onStarted) {
             },
         });
     try {
-        const run = await agent.send(prompt);
+        const run = await agent.send(toAgentMessage(payload));
         await onStarted(agent.agentId, run.id).catch(() => { });
         const result = await run.wait();
         return {

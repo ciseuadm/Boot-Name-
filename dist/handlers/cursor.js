@@ -12,15 +12,17 @@
 // same chat with a clear "ответ от Cursor" signature.
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleCursorCommand = handleCursorCommand;
+exports.handleCursorGithubSetup = handleCursorGithubSetup;
 exports.handleCursorNew = handleCursorNew;
 exports.handleCursorOff = handleCursorOff;
 exports.handleCursorCancel = handleCursorCancel;
-exports.handleCursorTask = handleCursorTask;
+exports.handleCursorMessage = handleCursorMessage;
 exports.recoverCursorTasks = recoverCursorTasks;
 const tg_1 = require("../tg");
 const emoji_1 = require("../emoji");
-const db_1 = require("../db");
 const cursor_1 = require("../cursor");
+const cursor_refs_1 = require("../cursor-refs");
+const db_1 = require("../db");
 // Active conversation per admin (agent id). Seeded from DB on first use so the
 // thread survives process restarts.
 const session = new Map();
@@ -59,15 +61,40 @@ async function handleCursorCommand(userId, chatId, states) {
     }
     const continuing = session.has(userId) && !forceNew.has(userId);
     await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('rocket')} <b>Связь с Cursor включена.</b>\n\n` +
-        `Пиши задачу обычным сообщением — отправлю её в Cursor (модель <b>Auto</b>, ` +
-        `Cursor сам выберет нужный ИИ). По готовности пришлю ответ сюда.\n\n` +
+        `Отправляй задачу <b>текстом</b> или <b>фото</b> (можно с подписью) — изображение попадёт в Cursor.\n\n` +
         (continuing
             ? `${(0, emoji_1.ce)('bulb')} Продолжаю прошлый диалог. /cursor_new — начать новый.\n`
             : `${(0, emoji_1.ce)('bulb')} Будет начат новый диалог.\n`) +
         `\n<b>Управление:</b>\n` +
         `/cursor_new — новый диалог\n` +
         `/cursor_cancel — отменить текущую задачу\n` +
+        `/cursor_github — GitHub спрашивает аккаунт? настройка один раз\n` +
         `/cursor_off — выйти из режима`);
+}
+async function handleCursorGithubSetup(userId, chatId) {
+    if (!isAdmin(userId))
+        return;
+    const owner = (0, cursor_1.githubRepoOwner)();
+    const repo = (0, cursor_1.getCursorRepoUrl)().replace('https://github.com/', '');
+    const cursorIntegrations = 'https://cursor.com/dashboard/integrations';
+    const installApp = (0, cursor_1.githubLoginLink)('/apps/cursor/installations/new', owner);
+    const repoSettings = (0, cursor_1.githubLoginLink)(`/${repo}/settings/installations`, owner);
+    const revokeOther = (0, cursor_1.githubLoginLink)('/settings/applications', 'socialmediacursor');
+    await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('link')} <b>GitHub: убрать постоянный выбор аккаунта</b>\n\n` +
+        `<b>Почему всплывает окно:</b> в браузере одновременно залогинены ` +
+        `<code>socialmediacursor</code> и <code>${owner}</code>. ` +
+        `Репозиторий бота — у <code>${owner}</code>, а Cursor часто подключают через другой аккаунт.\n\n` +
+        `<b>Сделай один раз (5 минут):</b>\n\n` +
+        `1️⃣ <a href="${cursorIntegrations}">Cursor → Integrations → GitHub</a>\n` +
+        `   В окне «Select an account» жми <b>${owner}</b> → Continue\n\n` +
+        `2️⃣ <a href="${installApp}">Установить Cursor GitHub App</a> на аккаунт <b>${owner}</b>\n` +
+        `   Дай доступ к <code>${repo}</code>\n\n` +
+        `3️⃣ <a href="${repoSettings}">Проверить доступ приложений к репо</a>\n\n` +
+        `4️⃣ (рекомендуется) <a href="${revokeOther}">Отключить Cursor у socialmediacursor</a>\n` +
+        `   Authorized OAuth Apps → Cursor → Revoke\n` +
+        `   Или просто выйди из socialmediacursor в браузере (аватар → Sign out)\n\n` +
+        `${(0, emoji_1.ce)('check')} После этого GitHub перестанет спрашивать при каждом клике. ` +
+        `Проверь: /cursor`);
 }
 async function handleCursorNew(userId, chatId) {
     if (!isAdmin(userId))
@@ -92,6 +119,7 @@ async function handleCursorCancel(userId, chatId) {
     }
     try {
         await (0, cursor_1.cancelCursorRun)(cur.agentId, cur.runId);
+        inFlight.delete(userId);
         await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('cross')} Отменяю текущую задачу Cursor…`);
     }
     catch (e) {
@@ -99,7 +127,46 @@ async function handleCursorCancel(userId, chatId) {
     }
 }
 // ── Task dispatch ───────────────────────────────────────────────────────────
-async function handleCursorTask(userId, chatId, text) {
+const PHOTO_ONLY_PROMPT = 'Пользователь отправил изображение без текста. Проанализируй его и выполни задачу, которую оно подразумевает.';
+const UNSUPPORTED_IMAGE_MIME = new Set(['image/svg+xml']);
+function imageRefPrefix(count, first) {
+    const dims = first?.width && first?.height ? ` (${first.width}×${first.height})` : '';
+    return (`[Пользователь приложил ${count} изображение(я)${dims} как визуальный референс. ` +
+        `ОБЯЗАТЕЛЬНО используй прикреплённое изображение при выполнении задачи — это главный ориентир, не игнорируй его.]\n\n`);
+}
+function formatImageAck(images) {
+    const first = images[0];
+    const dims = first.width && first.height ? `${first.width}×${first.height}, ` : '';
+    const ext = first.mimeType.split('/')[1]?.toUpperCase() ?? 'IMAGE';
+    return `${(0, emoji_1.ce)('spark')} <b>Референс прикреплён:</b> ${dims}${ext} — отправлен в Cursor вместе с текстом.\n`;
+}
+function toCursorImages(downloaded) {
+    return downloaded.map(img => {
+        if (tg_1.WEBHOOK_URL) {
+            const token = (0, cursor_refs_1.storeCursorRef)(img.buffer, img.mimeType);
+            return {
+                url: `${tg_1.WEBHOOK_URL}/cursor-ref/${token}`,
+                mimeType: img.mimeType,
+                width: img.width,
+                height: img.height,
+            };
+        }
+        return {
+            data: img.buffer.toString('base64'),
+            mimeType: img.mimeType,
+            width: img.width,
+            height: img.height,
+        };
+    });
+}
+function buildCursorPayload(caption, downloaded) {
+    const images = toCursorImages(downloaded);
+    const text = (downloaded.length ? imageRefPrefix(downloaded.length, downloaded[0]) : '') +
+        (caption || PHOTO_ONLY_PROMPT);
+    return { text, images };
+}
+/** Accepts text, photo, or photo+ caption and forwards everything to Cursor. */
+async function handleCursorMessage(userId, chatId, msg) {
     if (!isAdmin(userId))
         return;
     if (!(0, cursor_1.cursorConfigured)()) {
@@ -110,17 +177,48 @@ async function handleCursorTask(userId, chatId, text) {
         await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('alarm')} Cursor ещё работает над прошлой задачей. Дождись ответа или /cursor_cancel.`);
         return;
     }
+    const hasImage = (0, tg_1.messageHasImage)(msg);
+    const caption = (0, tg_1.getMessageText)(msg);
+    if (!caption && !hasImage)
+        return;
+    let downloaded = [];
+    if (hasImage) {
+        downloaded = await (0, tg_1.downloadMessageImages)(msg);
+        if (downloaded.length === 0) {
+            await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('warning')} Не удалось загрузить изображение (макс. 5 МБ, форматы JPEG/PNG/WebP/GIF).`);
+            return;
+        }
+        if (downloaded.some(img => UNSUPPORTED_IMAGE_MIME.has(img.mimeType))) {
+            await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('warning')} SVG не поддерживается Cursor Cloud — отправь PNG или JPEG.`);
+            return;
+        }
+    }
+    const payload = downloaded.length
+        ? buildCursorPayload(caption, downloaded)
+        : { text: caption };
     const prevAgentId = forceNew.has(userId) ? null : session.get(userId) ?? null;
-    const taskId = await (0, db_1.createCursorTask)(userId, chatId, text);
+    const logPrompt = payload.text + (downloaded.length ? ` [+${downloaded.length} image]` : '');
+    const taskId = await (0, db_1.createCursorTask)(userId, chatId, logPrompt);
     inFlight.set(userId, { taskId });
+    const imageAck = downloaded.length ? formatImageAck(downloaded) : '';
     await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('rocket')} Задача отправлена в Cursor${prevAgentId ? ' (продолжение диалога)' : ' (новый диалог)'}.\n` +
+        imageAck +
         `${(0, emoji_1.ce)('alarm')} Работаю… пришлю ответ, как будет готово.`);
+    void executeCursorTaskWork(userId, chatId, payload, prevAgentId, taskId).catch(err => {
+        console.error('Cursor task failed:', err);
+        inFlight.delete(userId);
+        (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('cross')} Внутренняя ошибка Cursor-задачи.`).catch(() => { });
+    });
+}
+async function executeCursorTaskWork(userId, chatId, payload, prevAgentId, taskId) {
     try {
-        const outcome = await (0, cursor_1.runCursorTask)(text, prevAgentId, async (agentId, runId) => {
+        const outcome = await (0, cursor_1.runCursorTask)(payload, prevAgentId, async (agentId, runId) => {
             session.set(userId, agentId);
             forceNew.delete(userId);
             inFlight.set(userId, { taskId, agentId, runId });
             await (0, db_1.setCursorTaskRun)(taskId, agentId, runId);
+            await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('link')} Смотреть агента в Cursor:\n${(0, cursor_1.cursorAgentUrl)(agentId)}\n\n` +
+                `${(0, emoji_1.ce)('bulb')} Это <b>Cloud Agent</b> — он не появится в списке локальных чатов слева.`).catch(() => { });
         });
         await (0, db_1.finishCursorTask)(taskId, outcome.status, outcome.result ?? null, outcome.prUrl ?? null);
         await deliverOutcome(chatId, outcome);
@@ -143,7 +241,10 @@ async function deliverOutcome(chatId, outcome) {
     await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('check')} <b>Ответ от Cursor:</b>`);
     await (0, tg_1.sendPlain)(chatId, outcome.result ?? '(агент не вернул текста)');
     if (outcome.prUrl) {
-        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('link')} Pull request: ${outcome.prUrl}`);
+        const prLink = (0, cursor_1.wrapGithubUrl)(outcome.prUrl);
+        await (0, tg_1.sendMessage)(chatId, `${(0, emoji_1.ce)('link')} Pull request: ${prLink}\n\n` +
+            `${(0, emoji_1.ce)('warning')} <b>Важно:</b> бот на Railway обновляется только после merge PR в <code>main</code>. ` +
+            `Пока PR открыт — в боте старый код.`);
     }
 }
 // ── Crash recovery ────────────────────────────────────────────────────────────
