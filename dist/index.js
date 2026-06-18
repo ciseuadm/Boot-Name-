@@ -24,15 +24,23 @@ app.use((_req, res, next) => {
     next();
 });
 // ── Bot images (used in /start welcome) ──────────────────────────────────────
+function sendBotImage(res, ...segments) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.sendFile(path_1.default.join(process.cwd(), ...segments));
+}
 app.get('/avatar.png', (_req, res) => {
-    res.sendFile(path_1.default.join(process.cwd(), 'assets', 'avatars', 'avatar-2-dark-neon.png'));
+    sendBotImage(res, 'assets', 'avatars', 'avatar-2-dark-neon.png');
 });
 app.get('/banner.png', (_req, res) => {
-    res.sendFile(path_1.default.join(process.cwd(), 'assets', 'banner-dark-neon.png'));
+    sendBotImage(res, 'assets', 'banner-dark-neon.png');
 });
+// Horizontal premium banner (3:2). New path so Telegram doesn't serve a cached square avatar.
+app.get('/premium-banner.png', (_req, res) => {
+    sendBotImage(res, 'assets', 'premium-banner-dark-neon.png');
+});
+// Legacy alias — same file, for old links.
 app.get('/premium.png', (_req, res) => {
-    // Horizontal banner (same aspect as /start), not the square avatar.
-    res.sendFile(path_1.default.join(process.cwd(), 'assets', 'banner-dark-neon.png'));
+    sendBotImage(res, 'assets', 'premium-banner-dark-neon.png');
 });
 // Short-lived image refs for Cursor Cloud Agents (Telegram → Cursor bridge).
 app.get('/cursor-ref/:token', (req, res) => {

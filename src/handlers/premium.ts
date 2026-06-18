@@ -3,26 +3,24 @@ import { getUser, grantPremium, recordPayment, isPremium, PREMIUM_MAX_BUTTONS, P
 import { ce } from '../emoji';
 import type { TgPreCheckoutQuery, TgMessage } from '../tg';
 
-const PREMIUM_BANNER_URL = WEBHOOK_URL ? `${WEBHOOK_URL}/premium.png` : '';
-// Telegram photo captions are capped at 1024 chars; HTML tg-emoji tags eat a lot of budget.
-const PHOTO_CAPTION_MAX = 900;
+// Distinct path from the old square /premium.png — Telegram caches photos by URL.
+const PREMIUM_BANNER_URL = WEBHOOK_URL ? `${WEBHOOK_URL}/premium-banner.png` : '';
 
-async function sendPremiumMessage(chatId: number, text: string): Promise<void> {
+async function sendPremiumMessage(
+  chatId: number,
+  caption: string,
+  body: string,
+): Promise<void> {
   if (PREMIUM_BANNER_URL) {
     try {
-      if (text.length <= PHOTO_CAPTION_MAX) {
-        await sendPhoto(chatId, PREMIUM_BANNER_URL, text);
-        return;
-      }
-      // Banner + separate text message when caption would exceed Telegram limit.
-      await sendPhoto(chatId, PREMIUM_BANNER_URL, `${ce('gem')} <b>Add Button Premium</b>`);
-      await sendMessage(chatId, text);
+      await sendPhoto(chatId, PREMIUM_BANNER_URL, caption);
+      await sendMessage(chatId, body);
       return;
     } catch (e) {
       console.error('premium sendPhoto failed:', e);
     }
   }
-  await sendMessage(chatId, text);
+  await sendMessage(chatId, `${caption}\n\n${body}`);
 }
 
 // Stars pricing
@@ -37,25 +35,24 @@ export async function handlePremiumCommand(userId: number, chatId: number): Prom
   const user = await getUser(userId);
   const premium = await isPremium(userId);
 
-  const activeLine =
-    premium && user?.premium_until
-      ? `${ce('crown')} Premium активен до <b>${new Date(user.premium_until).toLocaleDateString('ru-RU')}</b>\n\n`
-      : '';
+  const caption =
+    `${ce('gem')} <b>Add Button Premium</b>` +
+    (premium && user?.premium_until
+      ? `\n\n${ce('crown')} Premium активен до <b>${new Date(user.premium_until).toLocaleDateString('ru-RU')}</b>`
+      : '');
 
-  await sendPremiumMessage(
-    chatId,
-    `${ce('gem')} <b>Add Button Premium</b>\n\n` +
-      activeLine +
-      `<i>Каналы, на которые хочется подписаться, выглядят дорого.</i>\n` +
-      `Premium даёт твоим постам именно такой вид.\n\n` +
-      `${ce('bolt')} <b>Без лимитов</b> — публикуй и оформляй сколько нужно\n` +
-      `${ce('puzzle')} <b>Меню и сетки</b> — до ${PREMIUM_MAX_BUTTONS} кнопок под постом\n` +
-      `${ce('dividers')} <b>Шаблоны в один тап</b> — фирменный стиль за секунду\n` +
-      `${ce('alarm')} <b>Кнопки по расписанию</b> — выходят точно вовремя\n\n` +
-      `${ce('star')} <b>${PLANS.monthly.stars}</b> Stars / месяц — /buy_monthly\n` +
-      `${ce('fire')} <b>${PLANS.yearly.stars}</b> Stars / год · выгода 45% — /buy_yearly\n\n` +
-      `${ce('handshake')} Или получи Premium бесплатно — за друзей: /ref`,
-  );
+  const body =
+    `<i>Каналы, на которые хочется подписаться, выглядят дорого.</i>\n` +
+    `Premium даёт твоим постам именно такой вид.\n\n` +
+    `${ce('bolt')} <b>Без лимитов</b> — публикуй и оформляй сколько нужно\n` +
+    `${ce('puzzle')} <b>Меню и сетки</b> — до ${PREMIUM_MAX_BUTTONS} кнопок под постом\n` +
+    `${ce('dividers')} <b>Шаблоны в один тап</b> — фирменный стиль за секунду\n` +
+    `${ce('alarm')} <b>Кнопки по расписанию</b> — выходят точно вовремя\n\n` +
+    `${ce('star')} <b>${PLANS.monthly.stars}</b> Stars / месяц — /buy_monthly\n` +
+    `${ce('fire')} <b>${PLANS.yearly.stars}</b> Stars / год · выгода 45% — /buy_yearly\n\n` +
+    `${ce('handshake')} Или получи Premium бесплатно — за друзей: /ref`;
+
+  await sendPremiumMessage(chatId, caption, body);
 }
 
 // ── /buy_monthly / /buy_yearly ────────────────────────────────────────────────
