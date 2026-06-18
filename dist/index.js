@@ -34,11 +34,14 @@ app.get('/avatar.png', (_req, res) => {
 app.get('/banner.png', (_req, res) => {
     sendBotImage(res, 'assets', 'banner-dark-neon.png');
 });
-// Horizontal premium banner (3:2). New path so Telegram doesn't serve a cached square avatar.
+// Vertical premium card for /premium (banner + copy in one image).
+app.get('/premium-card.png', (_req, res) => {
+    sendBotImage(res, 'assets', 'premium-card-dark-neon.png');
+});
+// Horizontal premium banner. Legacy paths keep Telegram cache bust working.
 app.get('/premium-banner.png', (_req, res) => {
     sendBotImage(res, 'assets', 'premium-banner-dark-neon.png');
 });
-// Legacy alias — same file, for old links.
 app.get('/premium.png', (_req, res) => {
     sendBotImage(res, 'assets', 'premium-banner-dark-neon.png');
 });

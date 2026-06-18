@@ -3,24 +3,23 @@ import { getUser, grantPremium, recordPayment, isPremium, PREMIUM_MAX_BUTTONS, P
 import { ce } from '../emoji';
 import type { TgPreCheckoutQuery, TgMessage } from '../tg';
 
-// Distinct path from the old square /premium.png — Telegram caches photos by URL.
-const PREMIUM_BANNER_URL = WEBHOOK_URL ? `${WEBHOOK_URL}/premium-banner.png` : '';
+// Vertical card with banner + copy baked in. Distinct path avoids Telegram photo cache.
+const PREMIUM_CARD_URL = WEBHOOK_URL ? `${WEBHOOK_URL}/premium-card.png` : '';
 
 async function sendPremiumMessage(
   chatId: number,
+  fallbackText: string,
   caption: string,
-  body: string,
 ): Promise<void> {
-  if (PREMIUM_BANNER_URL) {
+  if (PREMIUM_CARD_URL) {
     try {
-      await sendPhoto(chatId, PREMIUM_BANNER_URL, caption);
-      await sendMessage(chatId, body);
+      await sendPhoto(chatId, PREMIUM_CARD_URL, caption);
       return;
     } catch (e) {
       console.error('premium sendPhoto failed:', e);
     }
   }
-  await sendMessage(chatId, `${caption}\n\n${body}`);
+  await sendMessage(chatId, fallbackText);
 }
 
 // Stars pricing
@@ -29,13 +28,8 @@ export const PLANS = {
   yearly:  { stars: 990, months: 12, label: '12 месяцев (скидка 45%)', key: 'premium_yearly' },
 } as const;
 
-// ── /premium command ─────────────────────────────────────────────────────────
-
-export async function handlePremiumCommand(userId: number, chatId: number): Promise<void> {
-  const user = await getUser(userId);
-  const premium = await isPremium(userId);
-
-  const caption =
+function buildPremiumText(user: Awaited<ReturnType<typeof getUser>>, premium: boolean): string {
+  const header =
     `${ce('gem')} <b>Add Button Premium</b>` +
     (premium && user?.premium_until
       ? `\n\n${ce('crown')} Premium активен до <b>${new Date(user.premium_until).toLocaleDateString('ru-RU')}</b>`
@@ -52,7 +46,21 @@ export async function handlePremiumCommand(userId: number, chatId: number): Prom
     `${ce('fire')} <b>${PLANS.yearly.stars}</b> Stars / год · выгода 45% — /buy_yearly\n\n` +
     `${ce('handshake')} Или получи Premium бесплатно — за друзей: /ref`;
 
-  await sendPremiumMessage(chatId, caption, body);
+  return `${header}\n\n${body}`;
+}
+
+// ── /premium command ─────────────────────────────────────────────────────────
+
+export async function handlePremiumCommand(userId: number, chatId: number): Promise<void> {
+  const user = await getUser(userId);
+  const premium = await isPremium(userId);
+  const text = buildPremiumText(user, premium);
+  // Card already contains the pitch copy; caption only adds the dynamic active line.
+  const caption =
+    premium && user?.premium_until
+      ? `${ce('crown')} Premium активен до <b>${new Date(user.premium_until).toLocaleDateString('ru-RU')}</b>`
+      : '';
+  await sendPremiumMessage(chatId, text, caption);
 }
 
 // ── /buy_monthly / /buy_yearly ────────────────────────────────────────────────
