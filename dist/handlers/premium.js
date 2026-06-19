@@ -11,7 +11,7 @@ const db_1 = require("../db");
 const emoji_1 = require("../emoji");
 // Distinct path from the old square /premium.png — Telegram caches photos by URL.
 // Bump the version query whenever the banner art changes so Telegram refetches it.
-const PREMIUM_BANNER_URL = tg_1.WEBHOOK_URL ? `${tg_1.WEBHOOK_URL}/premium-banner.png?v=3` : '';
+const PREMIUM_BANNER_URL = tg_1.WEBHOOK_URL ? `${tg_1.WEBHOOK_URL}/premium-banner.png?v=4` : '';
 // Telegram counts a photo caption by its VISIBLE length (HTML tags and custom
 // emoji markup don't count). Keep a little headroom under the 1024 hard limit.
 const CAPTION_SAFE_LIMIT = 1000;
